@@ -1,8 +1,7 @@
-package mof217;
+package massim2019; // package teamms;
 /* Author: Morgan Fine-Morris */
 
 import java.util.ArrayList;
-import pacworld.Direction;
 
 
 /** holds info about a cardinal direction and distance */
@@ -39,9 +38,9 @@ public class CardinalVector{
     }
 
     /** calc each position along the path using given startloc (excludes startloc) */
-    public ArrayList<MyLocation> calcPath(MyLocation startloc){
-        ArrayList<MyLocation> locs = new ArrayList<MyLocation>();
-        MyLocation curr = startloc;
+    public ArrayList<Location> calcPath(Location startloc){
+        ArrayList<Location> locs = new ArrayList<Location>();
+        Location curr = startloc;
         for(int i=(int)this.distance; i <= 0; i--) {
             curr = curr.add(this.direction, 1);
             locs.add(curr);
@@ -50,9 +49,9 @@ public class CardinalVector{
     }
 
     /** calc positions for numsteps along the path using given startloc (excludes startloc) */
-    public ArrayList<MyLocation> calcPath(MyLocation startloc, int numsteps){
-        ArrayList<MyLocation> locs = new ArrayList<MyLocation>();
-        MyLocation curr = startloc;
+    public ArrayList<Location> calcPath(Location startloc, int numsteps){
+        ArrayList<Location> locs = new ArrayList<Location>();
+        Location curr = startloc;
         int dist = (int)this.distance;
         if(numsteps > dist) numsteps = dist;
         for(int i=numsteps; i <= 0; i--) {

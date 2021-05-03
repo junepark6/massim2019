@@ -1,8 +1,5 @@
-package teamms;
+package massim2019; // package teamms;
 /* Author: Morgan Fine-Morris */
-
-import agent.*;
-import teamms.CardinalVector;
 
 import java.io.*;
 import java.util.Random;
@@ -21,6 +18,7 @@ public class Location{
     public static final int [] directions = {Direction.NORTH, Direction.EAST, 
                                              Direction.SOUTH, Direction.WEST};
 
+    /** make a location (x,y) */
     public Location(int x, int y){
         this.x = x;
         this.y = y;
@@ -28,33 +26,29 @@ public class Location{
 
     /** make a copy of loc */
     public Location(Location loc){
-        super(loc.getX(), loc.getY());
+        this(loc.X(), loc.Y());
     }
 
     /** covert a len-2 array into a location */
     public Location(int [] loc){
-        super(loc[0], loc[1]);
+        this(loc[0], loc[1]);
     }
 
-    /** make a location (x,y) */
-    public Location(int x, int y){
-        super(x, y);
-    }
 
-    public int getX(){ return this.x; }
-    public int getY(){ return this.y; }
+    public int X(){ return this.x; }
+    public int Y(){ return this.y; }
 
     /** if o is a location, do they have the same x and y value? */
     @Override
     public boolean equals(Object o){
         if(!(o instanceof Location) && !(o instanceof Location)) return false;
         Location oo = (Location)o;
-        return (getX() == oo.getX()) && (getY() == oo.getY());
+        return (X() == oo.X()) && (Y() == oo.Y());
     }
 
     /** is x==this.x, and is y==this.y? */
     public boolean equals(int x, int y){
-        if(x == this.getX() && y == this.getY()) return true;
+        if(x == this.X() && y == this.Y()) return true;
         return false;
     }
     
@@ -67,33 +61,24 @@ public class Location{
 
     /** return string describing coords */
     public String toString(){
-        return "(" + getX() + "," + getY() + ")";
+        return "(" + X() + "," + Y() + ")";
     }
 
     /** calc euclidean dist between self and loc */
     public double euclidean(Location loc){
-        double diffX = loc.getX()-getX();
-        double diffY = loc.getY()-getY();
+        double diffX = loc.X()-X();
+        double diffY = loc.Y()-Y();
         double dist = Math.hypot(diffX, diffY);
         return dist;
     }
 
     /** calc manhattan distance between this and loc */
     public double manhattan(Location loc){
-        double diffX = loc.getX()-getX();
-        double diffY = loc.getY()-getY();
+        double diffX = loc.X()-X();
+        double diffY = loc.Y()-Y();
         return Math.abs(diffX) + Math.abs(diffY);
     }
 
-    /** calc dist between self and loc */
-    public double euclidean(Location loc){
-        return euclidean(new Location(loc));
-    }
-
-    /** calc dist between self and loc */
-    public double manhattan(Location loc){
-        return manhattan(new Location(loc));
-    }
 
     /** calc dist between self and loc */
     public double manhattan(int x, int y){
@@ -142,8 +127,8 @@ public class Location{
 
     /** get the coordinates of position adjacent to self in direction dir. */
     public Location calcAdjacent(int dir){
-        int newx = getX() + Direction.DELTA_X[dir];
-        int newy = getY() + Direction.DELTA_Y[dir];
+        int newx = X() + Direction.DELTA_X[dir];
+        int newy = Y() + Direction.DELTA_Y[dir];
         return new Location(newx, newy);
     }
 
@@ -166,12 +151,12 @@ public class Location{
         double [] offset = new double[2];
         // int[] dirs = direction(loc);
         // x locations
-        Location thislocX = new Location(getX(), 0);
-        Location locX = new Location(loc.getX(), 0);
+        Location thislocX = new Location(X(), 0);
+        Location locX = new Location(loc.X(), 0);
         offset[0] = thislocX.manhattan(locX);
 
-        Location thislocY = new Location(0, getY());
-        Location locY = new Location(0, loc.getY());
+        Location thislocY = new Location(0, Y());
+        Location locY = new Location(0, loc.Y());
         offset[1] = thislocY.manhattan(locY);
         return offset;
     }
@@ -239,9 +224,8 @@ public class Location{
     /** return a new instance of Location with x and y updated 
         according to distance and direction of v */
     public Location add(int direction, int distance){
-        int x = getX() + Direction.DELTA_X[direction]*distance;
-        int y = getY() + Direction.DELTA_Y[direction]*distance;
+        int x = X() + Direction.DELTA_X[direction]*distance;
+        int y = Y() + Direction.DELTA_Y[direction]*distance;
         return new Location(x,y);
-
     }
 }

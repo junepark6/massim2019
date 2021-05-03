@@ -1,4 +1,4 @@
-package teamms;
+package massim2019; // package teamms;
 /*
 Author: Morgan Fine-Morris
 */
@@ -7,9 +7,14 @@ Author: Morgan Fine-Morris
 import java.util.ArrayList;
 import java.lang.Math;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import java.util.Collection;
+
 import java.lang.StringBuilder;
 
-import Direction; 
+// import massim2019.Direction;
 
 /** 
 * May eventually be used to represent entities in the MentalMap
@@ -24,10 +29,10 @@ class MapElement{
         type = elementtype;
     }
 
-    public setLastSighting(int time){
+    public void setLastSighting(int time){
         timeLastSeen = time;
     }
-    public getLastSighting(){
+    public int getLastSighting(){
         return timeLastSeen;
     }
 }
@@ -88,6 +93,10 @@ public class MentalMap{
         element_counter = 0;
     }
 
+    public MentalMap(int dim){
+        this(dim, dim);
+    }
+
     public MentalMap(){
         // init to twice the size of the expected world size
         // (twice the size bc we don't know where the agent starts on the map
@@ -98,11 +107,13 @@ public class MentalMap{
 
     public Location [] getMinAndMax(Collection<Location> locs){
         int minX, maxX, minY, maxY;
-        minX, minY = Integer.MAX_VALUE;
-        maxX, maxY = Integer.MIN_VALUE;
-        for(Location loc : ){
-            int x = loc.getX();
-            int y = loc.getY();
+        minX = Integer.MAX_VALUE;
+        minY = Integer.MAX_VALUE;
+        maxX = Integer.MIN_VALUE;
+        maxY = Integer.MIN_VALUE;
+        for(Location loc : locs){
+            int x = loc.X();
+            int y = loc.Y();
             if(x < minX) minX = x;
             if(y < minY) minY = y;
             if(x > maxX) maxX = x;
@@ -112,15 +123,18 @@ public class MentalMap{
         //return new int[]{minX, maxX, minY, maxY};
     }
 
-    public MentalMap MentalMap(HashMap<Location, String> features){
-        
-        // this may not be allowed, we may have to pass this data 
-        // via args instead of calcing it here
-        Location [] minmaxlocs = getMinAndMax(features.keySet());
-        Location minloc = minmaxlocs[0];
-        Location maxloc = minmaxlocs[1];
+    public MentalMap submap(Location xy, int radius){
+        Location minloc = xy.add(Direction.WEST, -radius).add(Direction.SOUTH, -radius);
+        Location maxloc = xy.add(Direction.NORTH, radius).add(Direction.EAST, radius);
 
-        this(maxloc.getX()-minloc.getX(), maxloc.getY()-maxloc.getY());
+        HashMap<Location, String> features = getSurroundingFeatures(xy, radius);
+        return new MentalMap(features, minloc, maxloc);
+    }
+
+    public MentalMap(HashMap<Location, String> features, Location minloc, Location maxloc){
+        
+        this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y());
+
         for(Map.Entry<Location, String> entry : features.entrySet()){
             String elem = entry.getValue();
             Location loc = entry.getKey();
@@ -133,7 +147,7 @@ public class MentalMap{
     }
 
     public int getJDim(){
-        if(map.length < 1) return null;
+        if(map.length < 1) return -1;
         return map[0].length;
     }
 
@@ -144,22 +158,21 @@ public class MentalMap{
         return b;
     }
 
-
     /** for a given location and radius, return info on distance to each feature within radius  */
-    public HashMap<String, Location> getSurroundingFeatures(Location xy, int radius){
+    public HashMap<Location, String> getSurroundingFeatures(Location xy, int radius){
         Location ij = coords_to_indexes(xy);
-        int i = ij.getX();
-        int j = ij.getY();
+        int i = ij.X();
+        int j = ij.Y();
 
         // for i-radius to i+radius and j-radius to j+radius,
         // look for features of map, and add them to features w/
         // new location giving their offset from xy.
-        HashMap<String, Location> features = new HashMap<>();
+        HashMap<Location, String> features = new HashMap<>();
         for(int ii=i-radius; ii < i+radius; i++){
             for(int jj=j-radius; jj < j+radius; j++){
                 String m = get_mark(ii, jj);
                 Location mloc = new Location(ii, jj);
-                features.put(m, indexes_to_coords(mloc));
+                features.put(indexes_to_coords(mloc), m);
             }
         }
         return features;
@@ -176,12 +189,12 @@ public class MentalMap{
         Location [] minmaxlocs = getMinAndMax(theirfeatures.values());
         Location minloc = minmaxlocs[0];
         Location maxloc = minmaxlocs[1];
-        int radius = (int)(maxloc.getX() - minloc.getX())/2;
+        int radius = (int)(maxloc.X() - minloc.X())/2;
 
         // given a set of features and their center
         // do they see an agent where 
-        HashMap<String, Location> myfeatures = getSurroundingFeatures(myloc, radius);
-        for(Map.Entry<String, Location> entry : features.entrySet()){
+        HashMap<Location, String> myfeatures = getSurroundingFeatures(myloc, radius);
+        for(Map.Entry<String, Location> entry : theirfeatures.entrySet()){
             String key = entry.getKey();
             Location loc = entry.getValue();
         }
@@ -207,9 +220,9 @@ public class MentalMap{
     // public set_myloc(Location xy){ }
 
     /** return a Location */
-    public get_myloc(){
-        return myloc;
-    }
+    // public get_myloc(){
+    //     return myloc;
+    // }
 
     /** convert x,y coordinates to array index coordinates i,j */
     public Location coords_to_indexes(int x, int y){
@@ -221,7 +234,7 @@ public class MentalMap{
 
     /** convert x,y coordinates to array index coordinates i,j */
     public Location coords_to_indexes(Location c){
-        return coords_to_indexes(c.getX(), c.getY());
+        return coords_to_indexes(c.X(), c.Y());
     }
 
     /** convert array index coordinates i,j to x,y coordinates */
@@ -234,7 +247,7 @@ public class MentalMap{
     
     /** convert array index coordinates to x,y coordinates */
     public Location indexes_to_coords(Location c){
-        return indexes_to_coords(c.getX(), c.getY());
+        return indexes_to_coords(c.X(), c.Y());
     }
 
     /** return the entry at (i,j) */
@@ -245,25 +258,25 @@ public class MentalMap{
     /** return the entry at pair */
     public String get_mark(Location xy){
         Location ij = coords_to_indexes(xy);
-        return get_mark(ij.getX(), ij.getY());
+        return get_mark(ij.X(), ij.Y());
     }
 
     public void set_mark(int i, int j, String mark){
         // if i,j is currently unknown, and mark is not unknown
         // add i,j to the frontier
         if (map[i][j] == this.UNKNOWN){
-            frontier.add();
+            frontier.add(new Location(i,j));
             last_frontier_update = 0;
         }
         map[i][j] = mark;
     }
 
-    public void set_mark(Location xy, String mark){
+    public void set_location(Location xy, String mark){
         Location ij = coords_to_indexes(xy);
-        set_mark(ij.getX(), ij.getY(), mark);
+        set_mark(ij.X(), ij.Y(), mark);
     }
 
-    public void set_marks(HashMap<Location, String> marks){
+    public void set_locationss(HashMap<Location, String> marks){
         for(Location xy : marks.keySet()){
             set_mark(xy, marks.get(xy));
         }
@@ -271,8 +284,8 @@ public class MentalMap{
 
     public boolean valid_coords(Location xy){
         int [] b = getBounds();
-        int x = xy.getX();
-        int y = xy.getY();
+        int x = xy.X();
+        int y = xy.Y();
         if (x >= 0 && x < b[0] && y >= 0 && y < b[1]) return true;
         return false;
     }
@@ -301,7 +314,7 @@ public class MentalMap{
 
     // /* mark square at pair with mark */
     // public void mark_map(Location pair, int mark){
-    //     mark_map(pair.getX(), pair.getY(), mark);
+    //     mark_map(pair.X(), pair.Y(), mark);
     // }
 
     public boolean is(int i, int j, String mark){
@@ -309,7 +322,7 @@ public class MentalMap{
     }
 
     public boolean is(Location pair, String mark){
-        return is(pair.getX(), pair.getY(), mark);
+        return is(pair.X(), pair.Y(), mark);
     }
 
     /** count the number of times mark appears in map */
@@ -356,6 +369,7 @@ public class MentalMap{
     //     return count;
     // }
 
+
     /** draw the grid using a multiline string */
     public String toString(){
         StringBuilder strRep = new StringBuilder(); // or StringBuilder
@@ -364,7 +378,7 @@ public class MentalMap{
 
         for(int i=0; i<map.length; i++){
 
-            strRep.add("|");
+            strRep.append("|");
 
             String[] seq = map[i];
             for(int j=0; j<seq.length; j++){
@@ -382,16 +396,16 @@ public class MentalMap{
                     // with substrings of the empty_str
                     int leftover = sqr_width - s.length();
                     int front, back;
-                    if(leftover % 2) front = back = leftover/2;
+                    if((leftover % 2) == 0) front = back = leftover/2;
                     else{ 
                         front = (int)leftover/2;
                         back = front + 1;
                     }
                     next_symbol = empty_str.substring(front) + s + empty_str.substring(back);
                 }
-                strRep.add(next_symbol);
+                strRep.append(next_symbol);
             }
-            strRep.add("|\n");
+            strRep.append("|\n");
         }
         return strRep.toString();
     }
@@ -445,7 +459,7 @@ public class MentalMap{
     //         ArrayList<Location> tmpnext = (ArrayList<Location>) next.clone();
     //         for(Location n : tmpnext){
     //             next.remove(n);
-    //             ArrayList<Location> adj = adjacent(n.getX(), n.getY());
+    //             ArrayList<Location> adj = adjacent(n.X(), n.Y());
     //             adj.removeAll(seen);
     //             if(adj.isEmpty())
     //                 // if no more adjacent squares are unseen,
@@ -453,7 +467,7 @@ public class MentalMap{
     //                 return null;
     //             seen.addAll(adj);
     //             for(Location pair : adj){
-    //                 int m = get_mark(pair.getX(), pair.getY());
+    //                 int m = get_mark(pair.X(), pair.Y());
     //                 if (m == mark){
     //                     return pair;
     //                 }else if(m != OBSTACLE){
@@ -470,7 +484,7 @@ public class MentalMap{
     //     ArrayList<Location> marked_adj = new ArrayList<Location>();
     //     for(Location sq : adj){
     //         try{
-    //             int sqmark = get_mark(sq.getX(), sq.getY());
+    //             int sqmark = get_mark(sq.X(), sq.Y());
     //             if (sqmark == mark) marked_adj.add(sq);
     //         }catch(ArrayIndexOutOfBoundsException e){} // do nothing
     //     }
@@ -532,8 +546,8 @@ public class MentalMap{
 
     // /** return the distance between two pairs of coordinates. */
     // public double distance_between(Location xy1, Location xy2){
-    //     double dx = (xy1.getX() - xy2.getX());
-    //     double dy = (xy1.getY() - xy2.getY());
+    //     double dx = (xy1.X() - xy2.X());
+    //     double dy = (xy1.Y() - xy2.Y());
     //     return Math.hypot(dx, dy);
     // }
 
@@ -549,7 +563,7 @@ public class MentalMap{
     //     int [] directionality = {-1, -1}; // init to invalid entries
     //     int i = 0;
     //     for(int dir : directions){
-    //         int[] xy3 = calculate_position_on_moveforward(xy1.getX(), xy1.getY(), dir);
+    //         int[] xy3 = calculate_position_on_moveforward(xy1.X(), xy1.Y(), dir);
     //         dists[dir] = distance_between(xy2, new Location(xy3));
 
     //         if (dists[dir] < curr_dist){
