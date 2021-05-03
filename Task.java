@@ -10,10 +10,29 @@ public class Task{
         this.reward = reward;
         this.shape = shape;
     }
+
+    /** count number of blocks of each type */
+    public HashMap<String, Integer> blockTypes(){
+        Collection<String> blocktypeCounts = shape.values();
+        HashMap<String, Integer> counts = new HashMap<>();
+        for(String st: shape.values()){
+            int count = Collections.frequency(blocktypeCounts, st);
+            counts.put(st, new Integer(count));
+        }
+        return blockTypes;
+    }
+
+    /** count number of block of type st */
+    public int blockTypes(String st){
+        Collection<String> blocktypeCounts = shape.values();
+        return Collections.frequency(blocktypeCounts, st);
+    }
     
     public String toString(){
         String output = "Deadline:" + deadline + " Reward:" + reward;
     }
+
+    // public String toPDDL(){}
 
     public print_shape(){
         MentalMap m = new MentalMap(this.shape);

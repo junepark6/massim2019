@@ -12,7 +12,7 @@ import java.lang.StringBuilder;
 import Direction; 
 
 /** 
-* 
+* May eventually be used to represent entities in the MentalMap
 */
 class MapElement{
     private int idnum;
@@ -59,30 +59,41 @@ public class MentalMap{
     public static final String UNKNOWN = "0";
     public static final String WALL = "W";
     public static final String EMPTY = " ";
-    public static final String AGENT = "A";
-    public static final String PACKAGE = "P";
-
+    public static final String BLOCK = "B"; // a blocks is a string B<N> where <N> is an int indicating type
+    public static final String DISPENSER = "D"; // D<N> indicates dispenser of blocks of type <N>
+    
+    // Should we use prefix "A" to indicate any agent, or use 
+    // different prefixes for agents of unknown team, agents on our team, and agent on the opposite team?
+    // For now, let "A" indicate agent of arbitrary team
+    public static final String AGENT = "A"; 
 
     public static final int [] directions = {Direction.NORTH, 
                                             Direction.EAST, 
                                             Direction.SOUTH, 
                                             Direction.WEST};
+
     private Location mycoords; // agent location in xy
     private Location myinds; // agent location in array indicies
     private Location origin; // the pair of indexes 
+
     private String[][] map;
     private ArrayList<Location> frontier;
     private ArrayList<Location> visited;
     private int last_frontier_update; // counts since last time the frontier was updated
     private int element_counter;
 
-    // private ArrayList<Location> visited;
-
-
     public MentalMap(int idim, int jdim){
         map = new String[idim][jdim];
         last_frontier_update = 0;
         element_counter = 0;
+    }
+
+    public MentalMap(){
+        // init to twice the size of the expected world size
+        // (twice the size bc we don't know where the agent starts on the map
+        // so there has to be room to represent the entire map above, below, 
+        // or to either side of the agents initial position)
+        this(80, 80);
     }
 
     public Location [] getMinAndMax(Collection<Location> locs){
@@ -126,6 +137,14 @@ public class MentalMap{
         return map[0].length;
     }
 
+    public int [] getBounds(){
+        int [] b = new int [2];
+        b[0] = getIDim();
+        b[1] = getJDim();
+        return b;
+    }
+
+
     /** for a given location and radius, return info on distance to each feature within radius  */
     public HashMap<String, Location> getSurroundingFeatures(Location xy, int radius){
         Location ij = coords_to_indexes(xy);
@@ -154,7 +173,7 @@ public class MentalMap{
      */
     public void align(Location myloc, Location theirloc, HashMap<String, Location> theirfeatures){
 
-        Location [] minmaxlocs = getMinAndMax(features.values());
+        Location [] minmaxlocs = getMinAndMax(theirfeatures.values());
         Location minloc = minmaxlocs[0];
         Location maxloc = minmaxlocs[1];
         int radius = (int)(maxloc.getX() - minloc.getX())/2;
@@ -168,25 +187,20 @@ public class MentalMap{
         }
     }
 
-    public int [] getBounds(){
-        int [] b = new int [2];
-        b[0] = getIDim();
-        b[1] = getJDim();
-        return b;
-    }
+    // Note: we may not actually need this. Its possible that we can just init the map 
+    // to a certain size and leave it at that size for the entire game.
+    // /** grow map in by a total of ns rows in the north-south direct, 
+    // * and/or ew columns in the east-west direction 
+    // */
+    // public grow(int ns, int ew){
+    //     // if we grow the map by inew, jnew, to a new size iNdim, jNdim
+    //     // we need to determine the original offset for each coord
+    //     // 
+    // }
 
-    /** grow map in by a total of ns rows in the north-south direct, 
-    * and/or ew columns in the east-west direction 
-    */
-    public grow(int ns, int ew){
-        // if we grow the map by inew, jnew, to a new size iNdim, jNdim
-        // we need to determine the original offset for each coord
-        // 
-    }
+    // public grow(int n, int s, int e, int w){
 
-    public grow(int n, int s, int e, int w){
-
-    }
+    // }
 
     // public set_myloc(int i, int j){}
 
