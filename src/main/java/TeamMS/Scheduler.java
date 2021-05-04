@@ -1,6 +1,5 @@
 package TeamMS;
 
-
 import eis.AgentListener;
 import eis.EnvironmentListener;
 import eis.exceptions.ActException;
@@ -12,6 +11,8 @@ import eis.iilang.Percept;
 import massim.eismassim.EnvironmentInterface;
 import TeamMS.agents.Agent;
 import TeamMS.agents.BasicAgent;
+import TeamMS.agents.*;
+
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -87,8 +88,12 @@ public class Scheduler implements AgentListener, EnvironmentListener{
 
             Agent agent = null;
             switch(agentConf.className){
+                
                 case "BasicAgent":
                     agent = new BasicAgent(agentConf.name, mailService);
+                    break;
+                case "ExploratoryAgent":
+                    agent = new TeamMS.agents.ExploratoryAgent(agentConf.name, mailService);
                     break;
                 // [add further types here]
                 default:
