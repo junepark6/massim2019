@@ -1,4 +1,4 @@
-package massim2019; // package teamms;
+package utility; // package teamms;
 
 /** A utility class that encapsulates information about compass directions. */
 public class Direction {

@@ -1,4 +1,4 @@
-package massim2019; // package teamms;
+package utility; // package teamms;
 
 // import mof217.MentalMap;
 // import vacworld.Direction;
