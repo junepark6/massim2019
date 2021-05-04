@@ -1,0 +1,14 @@
+{
+  "agents" : {
+    "agentA1" : {"entity" : "connectionA1", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA2" : {"entity" : "connectionA2", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA3" : {"entity" : "connectionA3", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA4" : {"entity" : "connectionA4", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA5" : {"entity" : "connectionA5", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA6" : {"entity" : "connectionA6", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA7" : {"entity" : "connectionA7", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA8" : {"entity" : "connectionA8", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA9" : {"entity" : "connectionA9", "team" : "A", "class" : "ExploratoryAgent"},
+    "agentA10" : {"entity" : "connectionA10", "team" : "A", "class" : "ExploratoryAgent"}
+  }
+}
