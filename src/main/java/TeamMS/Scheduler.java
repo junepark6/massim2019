@@ -53,7 +53,7 @@ public class Scheduler implements AgentListener, EnvironmentListener{
      * Create a new scheduler based on the given configuration file
      * @param path path to a java agents configuration file
      */
-    Scheduler(String path) {
+    public Scheduler(String path) {
         parseConfig(path);
     }
 
@@ -81,7 +81,7 @@ public class Scheduler implements AgentListener, EnvironmentListener{
      * Connects to an Environment Interface
      * @param ei the interface to connect to
      */
-    void setEnvironment(EnvironmentInterface ei) {
+    public void setEnvironment(EnvironmentInterface ei) {
         this.eis = ei;
         MailService mailService = new MailService();
         for (AgentConf agentConf: agentConfigurations) {
@@ -125,7 +125,7 @@ public class Scheduler implements AgentListener, EnvironmentListener{
     /**
      * Steps all agents and relevant infrastructure.
      */
-    void step() {
+    public void step() {
         // retrieve percepts for all agents
         List<Agent> newPerceptAgents = new Vector<>();
         agents.values().forEach(ag -> {

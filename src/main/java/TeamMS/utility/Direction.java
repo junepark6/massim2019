@@ -1,4 +1,4 @@
-package utility; // package teamms;
+package utility; //package TeamMS.utility; ?
 
 /** A utility class that encapsulates information about compass directions. */
 public class Direction {

@@ -1,9 +1,20 @@
 package TeamMS.agents;
 
+import java.util.Random;
+import java.util.Collection;
+import eis.iilang.*;
+import TeamMS.MailService;
+
+// import TeamMS.agents.*;
+// import TeamMS.*;
+// import massim.javaagents.agents.*;
+// import massim.javaagents.MailService;
+
+
 /**
  * A very basic agent.
  */
-public class ExploratoryAgent extends Agent {
+public class ExploratoryAgent extends BasicAgent {
 
     protected long seed;
     protected Random random_generator;
@@ -17,7 +28,12 @@ public class ExploratoryAgent extends Agent {
         super(name, mailbox);
         seed = (long) name.hashCode();
         random_generator = new Random(seed);
-        say("Test");
+    }
+
+    public ExploratoryAgent(String name) {
+        super(name, null);
+        seed = (long) name.hashCode();
+        random_generator = new Random(seed);
     }
 
     @Override
@@ -26,11 +42,16 @@ public class ExploratoryAgent extends Agent {
     @Override
     public void handleMessage(Percept message, String sender) {}
 
-    @Override
-    public Action step() {
+    private Action chooseAction(){
         Collection<Percept> percepts = getPercepts();
+        // check for obstacles to n, s, e, w, and pass 0 to appropriate arg in 
+        // randomBiasedMove to prevent a particular direction 
+        System.out.println("Percepts:"+percepts);
         return randomMove();
-     }
+    }
+
+    // @Override
+    // public Action step() {}
 
     /** return a direction string, randomly selected according to bias */
     public String randomBiasedDirection(int n, int s, int w, int e){

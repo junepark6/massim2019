@@ -11,10 +11,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import java.util.Collection;
-
 import java.lang.StringBuilder;
-
-// import massim2019.Direction;
 
 /** 
 * May eventually be used to represent entities in the MentalMap
@@ -35,6 +32,7 @@ class MapElement{
     public int getLastSighting(){
         return timeLastSeen;
     }
+
 }
 
 
