@@ -12,7 +12,7 @@ import TeamMS.MailService;
 
 
 /**
- * A very basic agent.
+ * An agent which encapsulates the logic of exploration (and functions).
  */
 public class ExploratoryAgent extends BasicAgent {
 
@@ -42,16 +42,14 @@ public class ExploratoryAgent extends BasicAgent {
     @Override
     public void handleMessage(Percept message, String sender) {}
 
+    @Override
     private Action chooseAction(){
         Collection<Percept> percepts = getPercepts();
         // check for obstacles to n, s, e, w, and pass 0 to appropriate arg in 
-        // randomBiasedMove to prevent a particular direction 
+        // randomBiasedMove to prevent a particular direction
         System.out.println("Percepts:"+percepts);
         return randomMove();
     }
-
-    // @Override
-    // public Action step() {}
 
     /** return a direction string, randomly selected according to bias */
     public String randomBiasedDirection(int n, int s, int w, int e){
