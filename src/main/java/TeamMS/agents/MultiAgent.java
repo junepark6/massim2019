@@ -1,5 +1,12 @@
 package TeamMS.agents;
 
+import java.util.Random;
+import java.util.Collection;
+import java.util.List;
+import eis.iilang.*;
+import TeamMS.MailService;
+import TeamMS.agents.*;
+
 /**
  * An agent that contains different role-specific agents 
  * (each of which handles the logic for its specific role).
@@ -20,15 +27,17 @@ public class MultiAgent extends BasicAgent {
     
     public MultiAgent(String name, MailService mailbox) {
         super(name, mailbox);
-        currentRole = ExploratoryAgent();
+        currentRole = new ExploratoryAgent(name);
     }
 
-    private Action chooseAction(){
+    @Override
+    protected Action chooseAction(){
         Collection<Percept> percepts = getPercepts();
         // check for obstacles to n, s, e, w, and pass 0 to appropriate arg in 
         // randomBiasedMove to prevent a particular direction 
-        System.out.println("Percepts:"+percepts);
-        return randomMove();
+        // System.out.println("Percepts:"+percepts);
+        return null;
+        // return randomMove();
     }
 
     // @Override

@@ -2,8 +2,13 @@ package TeamMS.agents;
 
 import java.util.Random;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import eis.iilang.*;
 import TeamMS.MailService;
+
+
 
 // import TeamMS.agents.*;
 // import TeamMS.*;
@@ -43,11 +48,26 @@ public class ExploratoryAgent extends BasicAgent {
     public void handleMessage(Percept message, String sender) {}
 
     @Override
-    private Action chooseAction(){
-        Collection<Percept> percepts = getPercepts();
+    protected Action chooseAction(){
+        List<Percept> percepts = getPercepts();
+
+        Map<String, List<Percept>> categorizedPercepts = percepts.stream()
+            .collect(Collectors.groupingBy(per -> per.getName()));
+        
+        // check that the last action is successful
+        // if not, do we need to undo it? (i.e. if we updated our beliefs to reflect that action already)
+        Percept lar = categorizedPercepts.get("lastActionResult").get(0);
+        
+        say("lastActionResult:"+lar.getParameters());
+        categorizedPercepts.get("lastAction");
+        say("Tasks: "+categorizedPercepts.get("task")+"\n");
+        say("Obstacles: "+categorizedPercepts.get("obstacle")+"\n");
+        say(categorizedPercepts.get("obstacle").get(0).toProlog());
+        // for each obstacle, determine if they are immediately adjacent to agent
+
+
         // check for obstacles to n, s, e, w, and pass 0 to appropriate arg in 
         // randomBiasedMove to prevent a particular direction
-        System.out.println("Percepts:"+percepts);
         return randomMove();
     }
 
@@ -113,3 +133,4 @@ public class ExploratoryAgent extends BasicAgent {
         return random.nextInt(max - min) + min;
     }
 }
+
