@@ -1,4 +1,4 @@
-package utility; // package teamms;
+package TeamMS.utility;
 /* Author: Morgan Fine-Morris */
 
 import java.util.ArrayList;

@@ -1,7 +1,4 @@
-package utility; // package teamms;
-
-// import mof217.MentalMap;
-// import vacworld.Direction;
+package TeamMS.utility;
 
 // compile with "javac -cp .:vacworld/:mof217/ mof217/TestMentalMap.java -verbose"
 // run with "java -cp . mof217.TestMentalMap"

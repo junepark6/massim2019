@@ -1,4 +1,5 @@
-package utility; // package teamms;
+package TeamMS.utility;
+// Note: this file may be unnecessary since we can use the Massim TaskInfo class
 
 import java.util.HashMap;
 
