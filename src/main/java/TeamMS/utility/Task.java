@@ -2,6 +2,8 @@ package TeamMS.utility;
 // Note: this file may be unnecessary since we can use the Massim TaskInfo class
 
 import java.util.HashMap;
+import java.util.Collection;
+import java.util.Collections;
 
 public class Task{
     private int deadline;
@@ -22,7 +24,7 @@ public class Task{
             int count = Collections.frequency(blocktypeCounts, st);
             counts.put(st, new Integer(count));
         }
-        return blockTypes;
+        return counts;
     }
 
     /** count number of block of type st */
@@ -33,14 +35,15 @@ public class Task{
     
     public String toString(){
         String output = "Deadline:" + deadline + " Reward:" + reward;
+        return output;
     }
 
     // public String toPDDL(){}
 
-    public print_shape(){
-        MentalMap m = new MentalMap(this.shape);
-        m.print_array();
-    }
+    // public print_shape(){
+    //     MentalMap m = new MentalMap(this.shape);
+    //     m.print_array();
+    // }
 }
 
 
