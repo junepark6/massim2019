@@ -136,7 +136,8 @@ public class MentalMap{
         for(Map.Entry<Location, String> entry : features.entrySet()){
             String elem = entry.getValue();
             Location loc = entry.getKey();
-            set_mark(loc, elem);
+            set_location(loc, elem);
+            
         }
     }
 
@@ -274,9 +275,9 @@ public class MentalMap{
         set_mark(ij.X(), ij.Y(), mark);
     }
 
-    public void set_locationss(HashMap<Location, String> marks){
+    public void set_locations(HashMap<Location, String> marks){
         for(Location xy : marks.keySet()){
-            set_mark(xy, marks.get(xy));
+            set_location(xy, marks.get(xy));
         }
     }
 
