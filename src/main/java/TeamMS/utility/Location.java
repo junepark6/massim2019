@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.HashMap;
 import java.lang.Math;
 import java.util.Arrays;
+import eis.iilang.Position;
+
 
 /** Represents an agent or package location. 
     Has several utility functions for determining relationships between locations. */
@@ -32,6 +34,15 @@ public class Location{
     /** covert a len-2 array into a location */
     public Location(int [] loc){
         this(loc[0], loc[1]);
+    }
+
+    /** convert location to Position */
+    public Position toPosition(){
+        return new Position(X(), Y());
+    }
+
+    public Location(Position loc){
+        this(loc.x, loc.y);
     }
 
 
