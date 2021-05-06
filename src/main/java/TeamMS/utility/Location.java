@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.HashMap;
 import java.lang.Math;
 import java.util.Arrays;
-import eis.iilang.Position;
+import massim.protocol.data.Position;
 
 
 /** Represents an agent or package location. 
