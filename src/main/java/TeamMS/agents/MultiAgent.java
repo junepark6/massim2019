@@ -2,6 +2,7 @@ package TeamMS.agents;
 
 import java.util.Random;
 import java.util.Collection;
+import java.util.*;
 import java.util.List;
 import eis.iilang.*;
 import TeamMS.MailService;
@@ -20,12 +21,11 @@ import TeamMS.agents.*;
  */
 public class MultiAgent extends BasicAgent {
     
-    private Agent currentRole;
+    private BasicAgent currentRole;
 
-    
-    private Agent exploratoryRole;
-    private Agent finderRole;
-    private Agent builderRole;
+    private BasicAgent exploratoryRole;
+    private BasicAgent finderRole;
+    private BasicAgent builderRole;
     
     public MultiAgent(String name, MailService mailbox) {
         super(name, mailbox);
@@ -34,13 +34,13 @@ public class MultiAgent extends BasicAgent {
     }
 
     @Override
-    protected Action chooseAction(){
-        Collection<Percept> percepts = getPercepts();
+    public Action chooseAction(Collection<Percept> percepts){
+        // Collection<Percept> percepts = getPercepts();
         // process percepts enough to decide if we need to switch roles
         // then update currentRole with any percept data that is pertinent to its role
-
-        
-        return currentRole.chooseAction();
+        // (either pass a subset of the percepts to )
+        exploratoryRole.chooseAction(percepts);
+        return currentRole.chooseAction(percepts);
     }
 
     // @Override
