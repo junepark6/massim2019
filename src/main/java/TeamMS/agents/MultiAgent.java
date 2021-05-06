@@ -21,23 +21,26 @@ import TeamMS.agents.*;
 public class MultiAgent extends BasicAgent {
     
     private Agent currentRole;
+
+    
     private Agent exploratoryRole;
     private Agent finderRole;
     private Agent builderRole;
     
     public MultiAgent(String name, MailService mailbox) {
         super(name, mailbox);
-        currentRole = new ExploratoryAgent(name);
+        exploratoryRole = new ExploratoryAgent(name);
+        currentRole = exploratoryRole;
     }
 
     @Override
     protected Action chooseAction(){
         Collection<Percept> percepts = getPercepts();
-        // check for obstacles to n, s, e, w, and pass 0 to appropriate arg in 
-        // randomBiasedMove to prevent a particular direction 
-        // System.out.println("Percepts:"+percepts);
-        return null;
-        // return randomMove();
+        // process percepts enough to decide if we need to switch roles
+        // then update currentRole with any percept data that is pertinent to its role
+
+        
+        return currentRole.chooseAction();
     }
 
     // @Override
