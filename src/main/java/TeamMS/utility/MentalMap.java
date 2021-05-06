@@ -3,15 +3,17 @@ package TeamMS.utility;
 Author: Morgan Fine-Morris
 */
 
-
 import java.util.ArrayList;
+import java.util.List;
+
 import java.lang.Math;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import java.util.Collection;
 import java.lang.StringBuilder;
+
+import TeamMS.utility.PathFinding;
 
 /** 
 * May eventually be used to represent entities in the MentalMap
@@ -39,7 +41,7 @@ class MapElement{
 /** 
 * Maintains a map of the space.
 */
-public class MentalMap{
+public class MentalMap<T>{
 
     public static final int CW = 0; // RIGHT
     public static final int CCW = 1; // LEFT
@@ -59,16 +61,16 @@ public class MentalMap{
 		R_ROTATION[Direction.WEST] = Direction.NORTH;
 	}
 
-    public static final String UNKNOWN = "0";
-    public static final String WALL = "W";
-    public static final String EMPTY = " ";
-    public static final String BLOCK = "B"; // a blocks is a string B<N> where <N> is an int indicating type
-    public static final String DISPENSER = "D"; // D<N> indicates dispenser of blocks of type <N>
+    // public static final String UNKNOWN = "0";
+    // public static final String WALL = "W";
+    // public static final String EMPTY = " ";
+    // public static final String BLOCK = "B"; // a blocks is a string B<N> where <N> is an int indicating type
+    // public static final String DISPENSER = "D"; // D<N> indicates dispenser of blocks of type <N>
     
     // Should we use prefix "A" to indicate any agent, or use 
     // different prefixes for agents of unknown team, agents on our team, and agent on the opposite team?
     // For now, let "A" indicate agent of arbitrary team
-    public static final String AGENT = "A"; 
+    // public static final String AGENT = "A"; 
 
     public static final int [] directions = {Direction.NORTH, 
                                             Direction.EAST, 
@@ -79,28 +81,46 @@ public class MentalMap{
     private Location myinds; // agent location in array indicies
     private Location origin; // the pair of indexes 
 
-    private String[][] map;
+    // private T[][] map;
+    private List<ArrayList<T>> map;
     private ArrayList<Location> frontier;
     private ArrayList<Location> visited;
     private int last_frontier_update; // counts since last time the frontier was updated
     private int element_counter;
+    private T unknown_symbol;
 
-    public MentalMap(int idim, int jdim){
-        map = new String[idim][jdim];
+    public MentalMap(int idim, int jdim, T unknown_symbol){
+        map = new ArrayList<ArrayList<T>>(idim);
+        for(int i=0; i<idim; i++){
+            ArrayList<T> jth = new ArrayList<T>(jdim);
+            for(int j=0; j<jdim; j++){
+                jth.add(unknown_symbol);
+            }
+            map.add(jth);
+        }
+        // map = new ArrayList
+        // map = new T[idim][jdim];
+        frontier = new ArrayList<Location>();
         last_frontier_update = 0;
         element_counter = 0;
+        this.unknown_symbol = unknown_symbol;
+
     }
 
-    public MentalMap(int dim){
-        this(dim, dim);
+    public MentalMap(int dim, T unknown_symbol){
+        this(dim, dim, unknown_symbol);
     }
 
-    public MentalMap(){
+    public MentalMap(T unknown_symbol){
         // init to twice the size of the expected world size
         // (twice the size bc we don't know where the agent starts on the map
         // so there has to be room to represent the entire map above, below, 
         // or to either side of the agents initial position)
-        this(80, 80);
+        this(80, 80, unknown_symbol);
+    }
+
+    public T get(int i, int j){
+        return map.get(i).get(j);
     }
 
     public Location [] getMinAndMax(Collection<Location> locs){
@@ -125,29 +145,28 @@ public class MentalMap{
         Location minloc = xy.add(Direction.WEST, -radius).add(Direction.SOUTH, -radius);
         Location maxloc = xy.add(Direction.NORTH, radius).add(Direction.EAST, radius);
 
-        HashMap<Location, String> features = getSurroundingFeatures(xy, radius);
-        return new MentalMap(features, minloc, maxloc);
+        HashMap<Location, T> features = getSurroundingFeatures(xy, radius);
+        return new MentalMap<T>(features, minloc, maxloc, this.unknown_symbol);
     }
 
-    public MentalMap(HashMap<Location, String> features, Location minloc, Location maxloc){
+    public MentalMap(HashMap<Location, T> features, Location minloc, Location maxloc, T unknown_symbol){
         
-        this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y());
+        this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y(), unknown_symbol);
 
-        for(Map.Entry<Location, String> entry : features.entrySet()){
-            String elem = entry.getValue();
+        for(Map.Entry<Location, T> entry : features.entrySet()){
+            T elem = entry.getValue();
             Location loc = entry.getKey();
-            set_location(loc, elem);
-            
+            set_location(loc, elem);   
         }
     }
 
     public int getIDim(){
-        return map.length;
+        return map.size();
     }
 
     public int getJDim(){
-        if(map.length < 1) return -1;
-        return map[0].length;
+        if(map.size() < 1) return -1;
+        return map.get(0).size();
     }
 
     public int [] getBounds(){
@@ -158,7 +177,7 @@ public class MentalMap{
     }
 
     /** for a given location and radius, return info on distance to each feature within radius  */
-    public HashMap<Location, String> getSurroundingFeatures(Location xy, int radius){
+    public HashMap<Location, T> getSurroundingFeatures(Location xy, int radius){
         Location ij = coords_to_indexes(xy);
         int i = ij.X();
         int j = ij.Y();
@@ -166,10 +185,10 @@ public class MentalMap{
         // for i-radius to i+radius and j-radius to j+radius,
         // look for features of map, and add them to features w/
         // new location giving their offset from xy.
-        HashMap<Location, String> features = new HashMap<>();
+        HashMap<Location, T> features = new HashMap<>();
         for(int ii=i-radius; ii < i+radius; i++){
             for(int jj=j-radius; jj < j+radius; j++){
-                String m = get_mark(ii, jj);
+                T m = get_mark(ii, jj);
                 Location mloc = new Location(ii, jj);
                 features.put(indexes_to_coords(mloc), m);
             }
@@ -183,21 +202,32 @@ public class MentalMap{
      * @param theirloc an x,y coordinate
      * @param theirfeatures a set of features centered at their loc
      */
-    public void align(Location myloc, Location theirloc, HashMap<String, Location> theirfeatures){
+    public void align(Location myloc, Location theirloc, HashMap<Location, T> theirfeatures){
 
-        Location [] minmaxlocs = getMinAndMax(theirfeatures.values());
+        Location [] minmaxlocs = getMinAndMax(theirfeatures.keySet());
         Location minloc = minmaxlocs[0];
         Location maxloc = minmaxlocs[1];
         int radius = (int)(maxloc.X() - minloc.X())/2;
 
         // given a set of features and their center
         // do they see an agent where 
-        HashMap<Location, String> myfeatures = getSurroundingFeatures(myloc, radius);
-        for(Map.Entry<String, Location> entry : theirfeatures.entrySet()){
-            String key = entry.getKey();
-            Location loc = entry.getValue();
+        HashMap<Location, T> myfeatures = getSurroundingFeatures(myloc, radius);
+        for(Map.Entry<Location, T> entry : theirfeatures.entrySet()){
+            Location key = entry.getKey();
+            T item = entry.getValue();
         }
     }
+
+    // public ArrayList<Location> findPath(Location loc1, Location loc2){
+    //     // int[][] map, int x1, int y1, int x2, int y2
+    //     int x1, x2, y1, y2;
+    //     x1 = loc1.X();
+    //     x2 = loc2.X();
+    //     y1 = loc1.Y();
+    //     y2 = loc2.Y();
+    //     PathFinding pf = PathFinding.aStar(map, x1, y1, x2, y2);
+    //     return pf.getPath();
+    // }
 
     // Note: we may not actually need this. Its possible that we can just init the map 
     // to a certain size and leave it at that size for the entire game.
@@ -225,9 +255,9 @@ public class MentalMap{
 
     /** convert x,y coordinates to array index coordinates i,j */
     public Location coords_to_indexes(int x, int y){
-        int dim = (map.length/2)-1;
-        int i = dim + x;
-        int j = dim + y;
+        // int dim = (getIDim()/2)-1;
+        int i = ((getIDim()/2)-1) + x;
+        int j = ((getJDim()/2)-1) + y;
         return new Location(i, j);
     }
 
@@ -238,7 +268,7 @@ public class MentalMap{
 
     /** convert array index coordinates i,j to x,y coordinates */
     public Location indexes_to_coords(int i, int j){
-        int dim = (map.length/2)-1;
+        int dim = (getIDim()/2)-1;
         int x = i - dim;
         int y = j - dim;
         return new Location(x, y);
@@ -250,32 +280,32 @@ public class MentalMap{
     }
 
     /** return the entry at (i,j) */
-    public String get_mark(int i, int j){
-        return map[i][j];
+    public T get_mark(int i, int j){
+        return get(i, j);
     }
 
     /** return the entry at pair */
-    public String get_mark(Location xy){
+    public T get_mark(Location xy){
         Location ij = coords_to_indexes(xy);
         return get_mark(ij.X(), ij.Y());
     }
 
-    public void set_mark(int i, int j, String mark){
+    public void set_mark(int i, int j, T mark){
         // if i,j is currently unknown, and mark is not unknown
         // add i,j to the frontier
-        if (map[i][j] == this.UNKNOWN){
+        if (get(i,j).equals(this.unknown_symbol)){
             frontier.add(new Location(i,j));
             last_frontier_update = 0;
         }
-        map[i][j] = mark;
+        map.get(i).set(j, mark);
     }
 
-    public void set_location(Location xy, String mark){
+    public void set_location(Location xy, T mark){
         Location ij = coords_to_indexes(xy);
         set_mark(ij.X(), ij.Y(), mark);
     }
 
-    public void set_locations(HashMap<Location, String> marks){
+    public void set_locations(HashMap<Location, T> marks){
         for(Location xy : marks.keySet()){
             set_location(xy, marks.get(xy));
         }
@@ -316,22 +346,22 @@ public class MentalMap{
     //     mark_map(pair.X(), pair.Y(), mark);
     // }
 
-    public boolean is(int i, int j, String mark){
-        return map[i][j] == mark;
+    public boolean is(int i, int j, T mark){
+        return get(i,j).equals(mark);
     }
 
-    public boolean is(Location pair, String mark){
+    public boolean is(Location pair, T mark){
         return is(pair.X(), pair.Y(), mark);
     }
 
     /** count the number of times mark appears in map */
-    public int count_marked(String mark){
+    public int count_marked(T mark){
         // UNKNOWN, OBSTACLE, VISITED
         int count = 0;
-        for(int i=0; i<map.length; i++){
-            for(int j=0; j<map[i].length; j++){
-                String m = get_mark(i, j);
-                if (m == mark) count++;
+        for(int i=0; i<getIDim(); i++){
+            for(int j=0; j<getJDim(); j++){
+                T m = get_mark(i, j);
+                if (m.equals(mark)) count++;
             }
         }
         return count;
@@ -374,33 +404,33 @@ public class MentalMap{
         StringBuilder strRep = new StringBuilder(); // or StringBuilder
         String empty_str = "               "; // sequence of blank chars to substring for arb-sized blank
         int sqr_width = 2;
-
-        for(int i=0; i<map.length; i++){
+        for(int i=0; i<getIDim(); i++){
 
             strRep.append("|");
 
-            String[] seq = map[i];
-            for(int j=0; j<seq.length; j++){
-                String s = map[j][i];
+            // T[] seq = map.get(i);
+            for(int j=0; j<getJDim(); j++){
+                T s = get(i,j);
+                String symbol = s.toString();
                 String next_symbol;
 
                 if(s == null){
                     next_symbol = empty_str.substring(sqr_width);
 
-                }else if(s.length() >= sqr_width){
-                    next_symbol = s;
+                }else if(symbol.length() >= sqr_width){
+                    next_symbol = symbol;
 
                 }else{
                     // pad the front and back of a short string
                     // with substrings of the empty_str
-                    int leftover = sqr_width - s.length();
+                    int leftover = sqr_width - symbol.length();
                     int front, back;
                     if((leftover % 2) == 0) front = back = leftover/2;
                     else{ 
                         front = (int)leftover/2;
                         back = front + 1;
                     }
-                    next_symbol = empty_str.substring(front) + s + empty_str.substring(back);
+                    next_symbol = empty_str.substring(0,front) + symbol + empty_str.substring(0,back);
                 }
                 strRep.append(next_symbol);
             }
@@ -412,6 +442,7 @@ public class MentalMap{
     /* quick-and-dirty printer for the nested array, map. */
     public void print_array(){
         System.out.println("MentalMap:");
+        System.out.println(toString());
 
         // System.out.print("   ");
         // // use % 10 to ensure that the label digit is always has 1 place
@@ -424,25 +455,25 @@ public class MentalMap{
         // System.out.print("\n");
         // System.out.println("----------------------");
 
-        for(int i=0; i<map.length; i++){
-            // use % 10 to ensure that the label digit is always has 1 place
-            // so the labels align
-            // System.out.print((i%10) + "|");
-            System.out.print("|");
+        // for(int i=0; i<getIDim(); i++){
+        //     // use % 10 to ensure that the label digit is always has 1 place
+        //     // so the labels align
+        //     // System.out.print((i%10) + "|");
+        //     System.out.print("|");
 
-            String[] seq = map[i];
-            for(int j=0; j<seq.length; j++){
-                // String s = Stringacter.toString(map[j][i]);//.toString();
-                String s = map[j][i];
-                if(s == null){
-                    System.out.print("  ");
-                }else if(s.length() >= 2){
-                    System.out.print(s);
-                }else System.out.print(" "+s);
-            }
-            System.out.print("|");
-            System.out.println();
-        }
+        //     String[] seq = map[i];
+        //     for(int j=0; j<seq.length; j++){
+        //         // String s = Stringacter.toString(map[j][i]);//.toString();
+        //         String s = map[j][i];
+        //         if(s == null){
+        //             System.out.print("  ");
+        //         }else if(s.length() >= 2){
+        //             System.out.print(s);
+        //         }else System.out.print(" "+s);
+        //     }
+        //     System.out.print("|");
+        //     System.out.println();
+        // }
     }
 
     // /* find the coordinates closes to cx, cy that is marked the same as mark*/
