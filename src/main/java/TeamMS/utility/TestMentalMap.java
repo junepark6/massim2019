@@ -6,7 +6,7 @@ package TeamMS.utility;
 public class TestMentalMap{
     public static void testOne(int x, int y){
         System.out.println("Test 1");
-        MentalMap m = new MentalMap(20);
+        MentalMap m = new MentalMap<String>(20, "U");
 
         System.out.println("original (x,y): "+ x + ", "+y);
 
@@ -23,7 +23,7 @@ public class TestMentalMap{
 
     public static void testTwo(int i, int j){
         System.out.println("Test 2");
-        MentalMap m = new MentalMap(20);
+        MentalMap m = new MentalMap<String>(20, "U");
 
         System.out.println("original (i,i): "+ i + ", "+j);
         Location xy = m.indexes_to_coords(i,j);
@@ -37,6 +37,10 @@ public class TestMentalMap{
         System.out.println("(i,j): "+ i + ", "+j);
         
     }
+
+    // public static void testSet(int i, int j, String s){
+
+    // }
 
     // public static void test__min_num_turns(){
     //     MentalMap m = new MentalMap(20);
@@ -65,15 +69,20 @@ public class TestMentalMap{
 
     public static void main(String[] args) {
 
-        MentalMap m = new MentalMap(5);
+        MentalMap<String> m = new MentalMap<String>(10,10,"U");
+        m.set_mark(0,0,"0");
+        m.set_location(new Location(0,0),"1");
+        m.set_location(new Location(1,1),null);
+
         System.out.println(m.toString());
         
-        testOne(0,0);
-        testOne(0,1);
-        testOne(0,-1);
-        testTwo(0,0);
-        testTwo(0,1);
-        testTwo(0,-1);
+        // testOne(0,0);
+        // testOne(0,1);
+        // testOne(0,-1);
+        // testTwo(0,0);
+        // testTwo(0,1);
+        // testTwo(0,-1);
+
         // test__min_num_turns();
         // test__minimal_turns();
         

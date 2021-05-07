@@ -53,13 +53,21 @@ public class BasicAgent extends Agent {
         return processSingleIdentifierPercept(per);
     }
 
-    // public processMultipleIdentifiersPercept(Percept per){
-    //     if(per == null) return null;
-    //     List<Parameter> params = per.getParameters();
-    //     for(Parameter par: params){
-            
-    //     }
-    // }
+    /** for a percept with many parameters, return them as a list of Strings */
+    public List<String> processMultipleParamsPercept(Percept per){
+        if(per == null) return null;
+        List<Parameter> params = per.getParameters();
+        ParameterList paramlist = (ParameterList)params;
+        System.out.println("\n\n\n"+params.getClass() + "  "+paramlist.getClass());
+        
+        List<String> param_strs = new ArrayList<String>(params.size());
+        for(Parameter par: params){
+            System.out.println(par +" "+par.getClass()+"\n\n\n");
+
+            param_strs.add(par.toString());
+        }
+        return param_strs;
+    }
 
     /** can be used to process either  */
     public Thing processThing(Percept per){

@@ -8,6 +8,16 @@ import eis.iilang.*;
 import TeamMS.MailService;
 import TeamMS.agents.*;
 
+/*
+agent explore randomly
+if they meet another agent, they trade info to determine how their map is oriented wrt to the other agent
+(they remember the transformation)
+agents continue separately
+when they locate a goal zone they broadcast the data to other agents
+
+homebase should be close to a goal zone
+*/
+
 /**
  * An agent that contains different role-specific agents 
  * (each of which handles the logic for its specific role).

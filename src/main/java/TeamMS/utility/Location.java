@@ -239,4 +239,23 @@ public class Location{
         int y = Y() + Direction.DELTA_Y[direction]*distance;
         return new Location(x,y);
     }
+
+    public Location add(Location loc){
+        return new Location(x+loc.X(), y+loc.Y());
+    }
+
+    public Location binary(){
+        int bx;
+        
+        if(x>1) bx = 1; 
+        else if(x==0) bx = 0;
+        else bx = -1;
+
+        int by;
+        if(y>1) by = 1; 
+        else if(y==0) by = 0;
+        else by = -1;
+
+        return new Location(bx, by);
+    }
 }

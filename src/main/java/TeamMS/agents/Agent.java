@@ -77,6 +77,7 @@ public abstract class Agent {
      */
     public void setPercepts(List<Percept> percepts) {
         this.percepts = percepts;
+        // should we process the percepts here?
     }
 
     /**

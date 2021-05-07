@@ -81,23 +81,27 @@ public class MentalMap<T>{
     private Location myinds; // agent location in array indicies
     private Location origin; // the pair of indexes 
 
-    // private T[][] map;
     private List<ArrayList<T>> map;
     private ArrayList<Location> frontier;
     private ArrayList<Location> visited;
     private int last_frontier_update; // counts since last time the frontier was updated
     private int element_counter;
     private T unknown_symbol;
+    private ArrayList<T> special_features; // block generators, goal zones, etc
 
     public MentalMap(int idim, int jdim, T unknown_symbol){
         map = new ArrayList<ArrayList<T>>(idim);
+        // map.trim
         for(int i=0; i<idim; i++){
             ArrayList<T> jth = new ArrayList<T>(jdim);
             for(int j=0; j<jdim; j++){
                 jth.add(unknown_symbol);
             }
+            // jth.trimToSize();
             map.add(jth);
         }
+        // map.trimToSize();
+
         // map = new ArrayList
         // map = new T[idim][jdim];
         frontier = new ArrayList<Location>();
@@ -117,6 +121,17 @@ public class MentalMap<T>{
         // so there has to be room to represent the entire map above, below, 
         // or to either side of the agents initial position)
         this(80, 80, unknown_symbol);
+    }
+
+    public MentalMap(HashMap<Location, T> features, Location minloc, Location maxloc, T unknown_symbol){
+        
+        this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y(), unknown_symbol);
+
+        for(Map.Entry<Location, T> entry : features.entrySet()){
+            T elem = entry.getValue();
+            Location loc = entry.getKey();
+            set_location(loc, elem);   
+        }
     }
 
     public T get(int i, int j){
@@ -141,24 +156,28 @@ public class MentalMap<T>{
         //return new int[]{minX, maxX, minY, maxY};
     }
 
+    // /** ns=-1 means south, ns=1 means north, we=-1 means west and we=1 means east */
+    // public MentalMap quadrant(Location xy, int radius, int ns, int we){
+        
+    //     if(ns == -1){
+    //         xy.add(Direction.SOUTH, radius)
+    //     }else if(ns == 1){
+    //         xy.add(Direction.North, radius)
+    //     }
+    //     Location minloc = xy.add(Direction.WEST, radius).add(Direction.SOUTH, radius);
+    //     Location maxloc = xy.add(Direction.NORTH, radius).add(Direction.EAST, radius);
+
+    // }
+
     public MentalMap submap(Location xy, int radius){
-        Location minloc = xy.add(Direction.WEST, -radius).add(Direction.SOUTH, -radius);
+        Location minloc = xy.add(Direction.WEST, radius).add(Direction.SOUTH, radius);
         Location maxloc = xy.add(Direction.NORTH, radius).add(Direction.EAST, radius);
 
         HashMap<Location, T> features = getSurroundingFeatures(xy, radius);
         return new MentalMap<T>(features, minloc, maxloc, this.unknown_symbol);
     }
 
-    public MentalMap(HashMap<Location, T> features, Location minloc, Location maxloc, T unknown_symbol){
-        
-        this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y(), unknown_symbol);
-
-        for(Map.Entry<Location, T> entry : features.entrySet()){
-            T elem = entry.getValue();
-            Location loc = entry.getKey();
-            set_location(loc, elem);   
-        }
-    }
+    
 
     public int getIDim(){
         return map.size();
@@ -176,6 +195,7 @@ public class MentalMap<T>{
         return b;
     }
 
+
     /** for a given location and radius, return info on distance to each feature within radius  */
     public HashMap<Location, T> getSurroundingFeatures(Location xy, int radius){
         Location ij = coords_to_indexes(xy);
@@ -186,8 +206,8 @@ public class MentalMap<T>{
         // look for features of map, and add them to features w/
         // new location giving their offset from xy.
         HashMap<Location, T> features = new HashMap<>();
-        for(int ii=i-radius; ii < i+radius; i++){
-            for(int jj=j-radius; jj < j+radius; j++){
+        for(int ii=i-radius; ii < i+radius; ii++){
+            for(int jj=j-radius; jj < j+radius; jj++){
                 T m = get_mark(ii, jj);
                 Location mloc = new Location(ii, jj);
                 features.put(indexes_to_coords(mloc), m);
@@ -217,6 +237,14 @@ public class MentalMap<T>{
             T item = entry.getValue();
         }
     }
+
+    // /**  convert to a 2D array. All items that should be considered obstacles */
+    // public int [][] toArray(){
+    //     for(int i=0; i<getIDim(); i++){
+    //         map.toArray();
+    //     }
+    //     return ;
+    // }
 
     // public ArrayList<Location> findPath(Location loc1, Location loc2){
     //     // int[][] map, int x1, int y1, int x2, int y2
@@ -308,6 +336,12 @@ public class MentalMap<T>{
     public void set_locations(HashMap<Location, T> marks){
         for(Location xy : marks.keySet()){
             set_location(xy, marks.get(xy));
+        }
+    }
+
+    public void set_locations(List<Location> locs, T mark){
+        for(Location xy : locs){
+            set_location(xy, mark);
         }
     }
 

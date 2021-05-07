@@ -1,6 +1,7 @@
 package TeamMS.utility;
 import java.lang.Math;
 import java.util.*;
+import TeamMS.utility.Location;
 
 public class PathFinding {
 
@@ -41,6 +42,8 @@ public class PathFinding {
     private int[][] scoreF = new int[maxL][maxL];
     private int[][] scoreG = new int[maxL][maxL];
     private int[][] scoreH = new int[maxL][maxL];
+    private boolean verbose = false;
+    private ArrayList<Location> path;
 
     public PathFinding(int[][] map, int x1, int y1, int x2, int y2) {
         // start and end position
@@ -48,7 +51,7 @@ public class PathFinding {
         Dot b = new Dot(x2, y2);
         int map_x = map.length;
         int map_y = map[0].length;
-        System.out.println("map size: " + map_x + "," + map_y);
+        if(verbose) System.out.println("map size: " + map_x + "," + map_y);
         aStar(map, map_x, map_y, a, b);
     }
 
@@ -80,6 +83,7 @@ public class PathFinding {
         // start node
         pq.add(new Weight(0, a));
         ans.add(a.toString());
+        path.add(new Location(a.x, a.y)); // add start node to the path
 
         // add obstacle into closed
         for (int i=0; i < map_x; i++) {
@@ -99,13 +103,18 @@ public class PathFinding {
         int plus = 10;
 
         while (!ans.lastElement().equals(b.toString())) {
-            System.out.println("#STEP: " + step);
+           if(verbose) System.out.println("#STEP: " + step);
             now = pq.poll().xy;
             String xy = now.toString();
-            System.out.println("CURRENT XY: " + xy);
+            if(verbose) System.out.println("CURRENT XY: " + xy);
+
+
             pq.clear();
             closed.add(xy);
-            if (step > 0) ans.add(xy);
+            if (step > 0) {
+                ans.add(xy);
+                path.add(new Location(now.x, now.y)); // add now to the path
+            }
 
             for (int i=0; i < 4; i++) {
                 int x = now.x + dx[i];
@@ -114,7 +123,7 @@ public class PathFinding {
                 xy = String.format("%d.%d", x, y);
                 if (closed.contains(xy)) continue;;
                 Dot curr = new Dot(x, y);
-                System.out.println("adjacent X,Y: " + curr.toString());
+                if(verbose) System.out.println("adjacent X,Y: " + curr.toString());
                 h(b, curr);
                 //int plus = 20;
                 //if (dx[i] == 0 || dy[i] == 0) plus = 10;
@@ -125,7 +134,11 @@ public class PathFinding {
             }
             step++;
         }
-        System.out.println(ans.toString());
+        if(verbose) System.out.println(ans.toString());
+    }
+
+    public ArrayList<Location> getPath(){
+        return path;
     }
 
     public static void main(String[] args) {
