@@ -1,0 +1,14 @@
+{
+  "agents" : {
+    "agentA1" : {"entity" : "connectionA1", "team" : "A", "class" : "GreedyAgent"},
+    "agentA2" : {"entity" : "connectionA2", "team" : "A", "class" : "GreedyAgent"},
+    "agentA3" : {"entity" : "connectionA3", "team" : "A", "class" : "GreedyAgent"},
+    "agentA4" : {"entity" : "connectionA4", "team" : "A", "class" : "GreedyAgent"},
+    "agentA5" : {"entity" : "connectionA5", "team" : "A", "class" : "GreedyAgent"},
+    "agentA6" : {"entity" : "connectionA6", "team" : "A", "class" : "GreedyAgent"},
+    "agentA7" : {"entity" : "connectionA7", "team" : "A", "class" : "GreedyAgent"},
+    "agentA8" : {"entity" : "connectionA8", "team" : "A", "class" : "GreedyAgent"},
+    "agentA9" : {"entity" : "connectionA9", "team" : "A", "class" : "GreedyAgent"},
+    "agentA10" : {"entity" : "connectionA10", "team" : "A", "class" : "GreedyAgent"}
+  }
+}
