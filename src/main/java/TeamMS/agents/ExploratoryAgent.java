@@ -43,9 +43,6 @@ public class ExploratoryAgent extends BasicAgent {
     protected String CLEAR = " ";
 
 
-    // use .index to determine the numeric direction
-    public static final ArrayList<String> dirSymbols = new ArrayList<String>(
-                                                       Arrays.asList("n", "e", "s", "w"));
 
     /**
      * Constructor.
@@ -57,7 +54,7 @@ public class ExploratoryAgent extends BasicAgent {
         seed = (long) name.hashCode();
         random_generator = new Random(seed);
         // make a mental map of default size (twice the size of the true map)
-        mapstate = new MentalMap<String>("-"); 
+        mapstate = new MentalMap<String>(UNKNOWN); 
         currentLocation = new Location(0,0);
     }
 
@@ -106,7 +103,7 @@ public class ExploratoryAgent extends BasicAgent {
         // if our last action was a successful movement, 
         // update our currentLocation accordingly
 
-        // for each grid square we know we can see, set it to 
+        // for each grid square we know we can see, mark it as seen
         int sight = 5;
         List<Location> seen_locations = new ArrayList<Location>();
         for(int i=-5; i<=5; i++){
@@ -122,11 +119,13 @@ public class ExploratoryAgent extends BasicAgent {
         if( obstacles!=null && !obstacles.isEmpty() ){
             ArrayList<Location> obsLocs = new ArrayList<Location>(obstacles.size());
             for(Percept obs : obstacles){
+                // extract the local coordinates
                 List<Parameter> params = obs.getParameters();
                 Number val0 = ((Numeral)params.get(0)).getValue();
                 Number val1 = ((Numeral)params.get(1)).getValue();
-
                 Location loc = new Location((int)val0, (int)val1);
+
+                // convert from local (agent-relative) coordinates to global coordinates
                 Location shifted = new Location(loc.toPosition().toLocal(currentLocation.toPosition()));
                 say("loc: "+loc);
                 say("shifted:"+shifted);
