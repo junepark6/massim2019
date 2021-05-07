@@ -39,7 +39,10 @@ class MapElement{
 
 
 /** 
-* Maintains a map of the space.
+* Maintains a map of the space, considers the origin to be agents initial position
+* Note that this requires the map to be 2x as large as the true map in both directions,
+* So that even if agent starts at furthest corner or edge of the map, there is still enough
+* space to either side to fill in the entire map.
 */
 public class MentalMap<T>{
 
@@ -77,55 +80,48 @@ public class MentalMap<T>{
                                             Direction.SOUTH, 
                                             Direction.WEST};
 
-    private Location mycoords; // agent location in xy
-    private Location myinds; // agent location in array indicies
-    private Location origin; // the pair of indexes 
+    // private Location mycoords; // agent location in xy
+    // private Location myinds; // agent location in array indicies
+    // private Location origin; // the pair of indexes 
 
     private List<ArrayList<T>> map;
     private ArrayList<Location> frontier;
     private ArrayList<Location> visited;
     private int last_frontier_update; // counts since last time the frontier was updated
     private int element_counter;
-    private T unknown_symbol;
+    private T initial_symbol;
     private ArrayList<T> special_features; // block generators, goal zones, etc
 
-    public MentalMap(int idim, int jdim, T unknown_symbol){
+    public MentalMap(int idim, int jdim, T initial_symbol){
         map = new ArrayList<ArrayList<T>>(idim);
-        // map.trim
         for(int i=0; i<idim; i++){
             ArrayList<T> jth = new ArrayList<T>(jdim);
             for(int j=0; j<jdim; j++){
-                jth.add(unknown_symbol);
+                jth.add(initial_symbol);
             }
-            // jth.trimToSize();
             map.add(jth);
         }
-        // map.trimToSize();
-
-        // map = new ArrayList
-        // map = new T[idim][jdim];
         frontier = new ArrayList<Location>();
         last_frontier_update = 0;
         element_counter = 0;
-        this.unknown_symbol = unknown_symbol;
-
+        this.initial_symbol = initial_symbol;
     }
 
-    public MentalMap(int dim, T unknown_symbol){
-        this(dim, dim, unknown_symbol);
+    public MentalMap(int dim, T initial_symbol){
+        this(dim, dim, initial_symbol);
     }
 
-    public MentalMap(T unknown_symbol){
+    public MentalMap(T initial_symbol){
         // init to twice the size of the expected world size
         // (twice the size bc we don't know where the agent starts on the map
         // so there has to be room to represent the entire map above, below, 
         // or to either side of the agents initial position)
-        this(80, 80, unknown_symbol);
+        this(80, 80, initial_symbol);
     }
 
-    public MentalMap(HashMap<Location, T> features, Location minloc, Location maxloc, T unknown_symbol){
+    public MentalMap(HashMap<Location, T> features, Location minloc, Location maxloc, T initial_symbol){
         
-        this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y(), unknown_symbol);
+        this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y(), initial_symbol);
 
         for(Map.Entry<Location, T> entry : features.entrySet()){
             T elem = entry.getValue();
@@ -138,6 +134,7 @@ public class MentalMap<T>{
         return map.get(i).get(j);
     }
 
+    /** get the corners of the square bounding the locations in locs */
     public Location [] getMinAndMax(Collection<Location> locs){
         int minX, maxX, minY, maxY;
         minX = Integer.MAX_VALUE;
@@ -152,8 +149,7 @@ public class MentalMap<T>{
             if(x > maxX) maxX = x;
             if(y > maxY) maxY = y;
         } 
-        return new Location[]{new Location(minX, minY), new Location(maxX, maxY)};
-        //return new int[]{minX, maxX, minY, maxY};
+        return new Location[]{ new Location(minX, minY), new Location(maxX, maxY) };
     }
 
     // /** ns=-1 means south, ns=1 means north, we=-1 means west and we=1 means east */
@@ -174,10 +170,8 @@ public class MentalMap<T>{
         Location maxloc = xy.add(Direction.NORTH, radius).add(Direction.EAST, radius);
 
         HashMap<Location, T> features = getSurroundingFeatures(xy, radius);
-        return new MentalMap<T>(features, minloc, maxloc, this.unknown_symbol);
+        return new MentalMap<T>(features, minloc, maxloc, this.initial_symbol);
     }
-
-    
 
     public int getIDim(){
         return map.size();
@@ -194,7 +188,6 @@ public class MentalMap<T>{
         b[1] = getJDim();
         return b;
     }
-
 
     /** for a given location and radius, return info on distance to each feature within radius  */
     public HashMap<Location, T> getSurroundingFeatures(Location xy, int radius){
@@ -238,7 +231,7 @@ public class MentalMap<T>{
         }
     }
 
-    // /**  convert to a 2D array. All items that should be considered obstacles */
+    /**  convert to a 2D array. All items that should be considered obstacles */
     // public int [][] toArray(){
     //     for(int i=0; i<getIDim(); i++){
     //         map.toArray();
@@ -257,29 +250,6 @@ public class MentalMap<T>{
     //     return pf.getPath();
     // }
 
-    // Note: we may not actually need this. Its possible that we can just init the map 
-    // to a certain size and leave it at that size for the entire game.
-    // /** grow map in by a total of ns rows in the north-south direct, 
-    // * and/or ew columns in the east-west direction 
-    // */
-    // public grow(int ns, int ew){
-    //     // if we grow the map by inew, jnew, to a new size iNdim, jNdim
-    //     // we need to determine the original offset for each coord
-    //     // 
-    // }
-
-    // public grow(int n, int s, int e, int w){
-
-    // }
-
-    // public set_myloc(int i, int j){}
-
-    // public set_myloc(Location xy){ }
-
-    /** return a Location */
-    // public get_myloc(){
-    //     return myloc;
-    // }
 
     /** convert x,y coordinates to array index coordinates i,j */
     public Location coords_to_indexes(int x, int y){
@@ -307,9 +277,20 @@ public class MentalMap<T>{
         return indexes_to_coords(c.X(), c.Y());
     }
 
-    /** return the entry at (i,j) */
+    /** return the element at indexes (i,j) */
     public T get_mark(int i, int j){
         return get(i, j);
+    }
+
+    /** set the element at indexes (i,j) to mark */
+    public void set_mark(int i, int j, T mark){
+        // if i,j is currently unknown, and mark is not unknown
+        // add i,j to the frontier
+        if (get(i,j).equals(this.initial_symbol)){
+            frontier.add(new Location(i,j));
+            last_frontier_update = 0;
+        }
+        map.get(i).set(j, mark);
     }
 
     /** return the entry at pair */
@@ -318,27 +299,20 @@ public class MentalMap<T>{
         return get_mark(ij.X(), ij.Y());
     }
 
-    public void set_mark(int i, int j, T mark){
-        // if i,j is currently unknown, and mark is not unknown
-        // add i,j to the frontier
-        if (get(i,j).equals(this.unknown_symbol)){
-            frontier.add(new Location(i,j));
-            last_frontier_update = 0;
-        }
-        map.get(i).set(j, mark);
-    }
-
+    /** convert xy into indexes, and set entry at indexes to mark */
     public void set_location(Location xy, T mark){
         Location ij = coords_to_indexes(xy);
         set_mark(ij.X(), ij.Y(), mark);
     }
 
+    /** convert each location into indexes, and set entries at indexes to corresponding marks */
     public void set_locations(HashMap<Location, T> marks){
         for(Location xy : marks.keySet()){
             set_location(xy, marks.get(xy));
         }
     }
 
+    /** convert each location into indexes, and set entries at indexes to mark */
     public void set_locations(List<Location> locs, T mark){
         for(Location xy : locs){
             set_location(xy, mark);

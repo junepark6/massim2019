@@ -37,7 +37,7 @@ public class CardinalVector{
         this.distance--;
     }
 
-    /** calc each position along the path using given startloc (excludes startloc) */
+    /** calc each position along the path using given startloc (excludes startloc from the path) */
     public ArrayList<Location> calcPath(Location startloc){
         ArrayList<Location> locs = new ArrayList<Location>();
         Location curr = startloc;
@@ -48,7 +48,7 @@ public class CardinalVector{
         return locs;
     }
 
-    /** calc positions for numsteps along the path using given startloc (excludes startloc) */
+    /** calc positions for numsteps along the path using given startloc (excludes startloc from the path) */
     public ArrayList<Location> calcPath(Location startloc, int numsteps){
         ArrayList<Location> locs = new ArrayList<Location>();
         Location curr = startloc;

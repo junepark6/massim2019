@@ -12,6 +12,9 @@ import java.util.Arrays;
 import massim.protocol.data.Position;
 
 
+
+
+
 /** Represents an agent or package location. 
     Has several utility functions for determining relationships between locations. */
 public class Location{
@@ -19,7 +22,13 @@ public class Location{
     private int x, y;
     public static final int [] directions = {Direction.NORTH, Direction.EAST, 
                                              Direction.SOUTH, Direction.WEST};
-
+    
+    // use .index to determine the numeric direction
+    public static final ArrayList<String> dirSymbols = new ArrayList<String>(
+                                                       Arrays.asList("n", "e", "s", "w"));
+    // use .index to determine the numeric direction
+    public static final ArrayList<String> wrappedDirSymbols = new ArrayList<String>(
+                                                       Arrays.asList("[n]", "[e]", "[s]", "[w]"));
     /** make a location (x,y) */
     public Location(int x, int y){
         this.x = x;
@@ -45,9 +54,44 @@ public class Location{
         this(loc.x, loc.y);
     }
 
-
     public int X(){ return this.x; }
     public int Y(){ return this.y; }
+
+    /** is the specified direction valid? */
+    public static boolean validDirection(int dir){ return dir >= 0 && dir <= 3;}
+
+    /** return which of the cardinal directions is opposite cardinal direction dir */
+    public static int opposite_direction(int dir){
+        return (dir + 2) % 4;
+    }
+
+    /** return the 2 cardinal directions that are perpendicular to cardinal direction dir */
+    public static int[] perpendicular_directions(int dir){
+        int [] dirs = new int [2];
+        // find one of the cardinal directions perpendicular to dir
+        // then find the opposite for the second one
+        dirs[0] = (dir + 1) % 4;
+        dirs[1] = opposite_direction(dirs[0]);
+        return dirs;
+    }
+
+    /** given a direction string, conver to the direction int used by this class */
+    public static int getDirInt(String dir){
+        if(dirSymbols.contains(dir)){
+            return dirSymbols.indexOf(dir);
+        }else if(wrappedDirSymbols.contains(dir)){
+            return wrappedDirSymbols.indexOf(dir);
+        }
+        return -1;
+    }
+
+    public static String getDirSymbol(int dir){
+        return dirSymbols.get(dir);
+    }
+
+    public static String getWrappedDirSymbol(int dir){
+        return wrappedDirSymbols.get(dir);
+    }
 
     /** if o is a location, do they have the same x and y value? */
     @Override
@@ -208,23 +252,6 @@ public class Location{
         return vecs;
     }
 
-    /** is the specified direction valid? */
-    public static boolean validDirection(int dir){ return dir >= 0 && dir <= 3;}
-
-    /** return which of the cardinal directions is opposite cardinal direction dir */
-    public static int opposite_direction(int dir){
-        return (dir + 2) % 4;
-    }
-
-    /** return the 2 cardinal directions that are perpendicular to cardinal direction dir */
-    public static int[] perpendicular_directions(int dir){
-        int [] dirs = new int [2];
-        // find one of the cardinal directions perpendicular to dir
-        // then find the opposite for the second one
-        dirs[0] = (dir + 1) % 4;
-        dirs[1] = opposite_direction(dirs[0]);
-        return dirs;
-    }
 
     /** return a new instance of Location with x and y updated 
         according to distance and direction of v */
@@ -242,6 +269,10 @@ public class Location{
 
     public Location add(Location loc){
         return new Location(x+loc.X(), y+loc.Y());
+    }
+    
+    public Location subt(Location loc){
+        return new Location(x-loc.X(), y-loc.Y());
     }
 
     public Location binary(){
