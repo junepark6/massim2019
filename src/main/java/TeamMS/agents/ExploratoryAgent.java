@@ -27,7 +27,7 @@ import TeamMS.utility.*;
 /**
  * An agent which encapsulates the logic of exploration (and functions).
  */
-public class ExploratoryAgent extends BasicAgent {
+public class ExploratoryAgent extends BaseAgent {
 
     protected long seed;
     protected Random random_generator;

@@ -48,7 +48,7 @@ public class BaseAgent extends BasicAgent {
     public List<String> processMultipleParamsPercept(Percept per){
         if(per == null) return null;
         List<Parameter> params = per.getParameters();
-        System.out.println("\n\n\n"+params.getClass() + "  "+paramlist.getClass());
+        System.out.println("\n\n\n"+params.getClass() );
         
         List<String> param_strs = new ArrayList<String>(params.size());
         for(Parameter par: params){
