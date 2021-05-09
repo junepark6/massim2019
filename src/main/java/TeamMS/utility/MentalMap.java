@@ -94,6 +94,8 @@ public class MentalMap<T>{
 
     public MentalMap(int idim, int jdim, T initial_symbol){
         // only init map if dimensions are valid (non-zero)
+        System.out.println(idim +" "+ jdim);
+
         map = null;
         if(idim!=0 && jdim!=0){
             map = new ArrayList<ArrayList<T>>(idim);
@@ -127,7 +129,8 @@ public class MentalMap<T>{
     public MentalMap(HashMap<Location, T> features, Location minloc, Location maxloc, T initial_symbol){
         
         // init the map using initial_symbol
-        this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y(), initial_symbol);
+        this(maxloc.X()-minloc.X(), maxloc.Y()-minloc.Y(), initial_symbol);
+        System.out.println(this.getIDim()+" "+this.getJDim());
 
         // add the features
         for(Map.Entry<Location, T> entry : features.entrySet()){
@@ -161,8 +164,14 @@ public class MentalMap<T>{
         return new MentalMap<E>(newmap, mapping.get(this.initial_symbol));
     }
 
+    /** return the element at indexes (i,j) */
     public T get(int i, int j){
         return map.get(i).get(j);
+    }
+
+    /** return the element at indexes (i,j) */
+    public T get_mark(int i, int j){
+        return get(i, j);
     }
 
     /** get the corners of the square bounding the locations in locs */
@@ -201,12 +210,9 @@ public class MentalMap<T>{
     public MentalMap<T> submap(Location xy, int radius){
         Location minloc = xy.add(Direction.WEST, radius).add(Direction.SOUTH, radius);
         Location maxloc = xy.add(Direction.NORTH, radius).add(Direction.EAST, radius);
-
         HashMap<Location, T> features = getSurroundingFeatures(xy, radius);
         return new MentalMap<T>(features, minloc, maxloc, this.initial_symbol);
     }
-
-    
 
     public int getIDim(){
         return map.size();
@@ -312,10 +318,6 @@ public class MentalMap<T>{
         return indexes_to_coords(c.X(), c.Y());
     }
 
-    /** return the element at indexes (i,j) */
-    public T get_mark(int i, int j){
-        return get(i, j);
-    }
 
     /** set the element at indexes (i,j) to mark */
     public void set_mark(int i, int j, T mark){
@@ -447,12 +449,13 @@ public class MentalMap<T>{
         StringBuilder strRep = new StringBuilder(); // or StringBuilder
         String empty_str = "               "; // sequence of blank chars to substring for arb-sized blank
         int sqr_width = 2;
-        for(int i=0; i<getIDim(); i++){
+        for(int j=0; j<getJDim(); j++){
+        
 
             strRep.append("|");
 
             // T[] seq = map.get(i);
-            for(int j=0; j<getJDim(); j++){
+            for(int i=0; i<getIDim(); i++){
                 T s = get(i,j);
                 String symbol = s.toString();
                 String next_symbol;

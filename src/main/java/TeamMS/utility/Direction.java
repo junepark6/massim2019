@@ -23,9 +23,10 @@ public class Direction {
     DELTA_X[SOUTH] = 0;
     DELTA_X[WEST] = -1;
 
-    DELTA_Y[NORTH] = -1;
+    // Morgan changed this so that NORTH is 1 and SOUTH is -1 (prev. was opposite, why?)
+    DELTA_Y[NORTH] = 1;
     DELTA_Y[EAST] = 0;
-    DELTA_Y[SOUTH] = 1;
+    DELTA_Y[SOUTH] = -1;
     DELTA_Y[WEST] = 0;
   }
 

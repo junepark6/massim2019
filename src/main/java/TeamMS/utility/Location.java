@@ -216,12 +216,22 @@ public class Location{
         return offset;
     }
 
+    public Location signed_loc_offset(Location loc){
+        double[] off = signed_offset(loc);
+        return new Location((int)off[0], (int)off[1]);
+    }
+
     /** calc (unsigned, i.e. abs value) x and y offset from loc */ 
     public double[] unsigned_offset(Location loc){
         double [] off = signed_offset(loc);
         off[0] = Math.abs(off[0]);
         off[1] = Math.abs(off[1]);
         return off;
+    }
+
+    public Location unsigned_loc_offset(Location loc){
+        double[] off = unsigned_offset(loc);
+        return new Location((int)off[0], (int)off[1]);
     }
 
     /** return info about direction and distance */
@@ -259,6 +269,7 @@ public class Location{
         return add(v.getDirection(), (int) v.getDistance());
     }
 
+
     /** return a new instance of Location with x and y updated 
         according to distance and direction of v */
     public Location add(int direction, int distance){
@@ -270,7 +281,8 @@ public class Location{
     public Location add(Location loc){
         return new Location(x+loc.X(), y+loc.Y());
     }
-    
+
+
     public Location subt(Location loc){
         return new Location(x-loc.X(), y-loc.Y());
     }
