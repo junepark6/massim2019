@@ -36,7 +36,10 @@ public class ExploratoryAgent extends BaseAgent {
     protected MentalMap<String> mapstate;
     protected boolean disabled;
     protected float energy;
+    protected int steps;
     protected int step;
+    protected int sight;
+    protected String team;
 
     protected String OBSTACLE = "X";
     protected String UNKNOWN = "-";
@@ -53,6 +56,7 @@ public class ExploratoryAgent extends BaseAgent {
         super(name, mailbox);
         seed = (long) name.hashCode();
         random_generator = new Random(seed);
+        steps = -1;
         // make a mental map of default size (twice the size of the true map)
         mapstate = new MentalMap<String>(UNKNOWN); 
         currentLocation = new Location(0,0);
@@ -75,50 +79,56 @@ public class ExploratoryAgent extends BaseAgent {
         Map<String, List<Percept>> categorizedPercepts = percepts.stream()
             .collect(Collectors.groupingBy(per -> per.getName()));
 
+        // handle initial percept
+        if(steps == -1){
+            if(categorizedPercepts.containsKey("vision")) sight = (int)processSingleNumeralPercept(categorizedPercepts.get("vision").get(0));
+            if(categorizedPercepts.containsKey("team")) team = (String)processSingleIdentifierPercept(categorizedPercepts.get("team").get(0));
+            if(categorizedPercepts.containsKey("steps")) steps = (int)processSingleNumeralPercept(categorizedPercepts.get("steps").get(0));
+        }
+
         // check that the last action is successful
         // if not, do we need to undo it? (i.e. if we updated our beliefs to reflect that action already)
         List<Percept> lastActionResult = categorizedPercepts.get("lastActionResult");
         if( lastActionResult!=null && !lastActionResult.isEmpty() ){
+
             String result = processSingleIdentifierPercept(lastActionResult.get(0));
             Percept lastAction = categorizedPercepts.get("lastAction").get(0);
             String action = processSingleIdentifierPercept(lastAction);
+
             say("Result: "+ result + " Action: "+action);
+
+            // update agent's current position if a move action was sucessful
             if(result.equals("success") && action.equals("move")){
                 String lastActionParamsStr= categorizedPercepts.get("lastActionParams").toString();
                 Percept lastActionParams = categorizedPercepts.get("lastActionParams").get(0);
-                // List<String> params = processMultipleParamsPercept(lastActionParams);
-                // say("Params: "+params+ "  "+params.get(0));
                 
-                
+                String wrappedDirStr = lastActionParams.getParameters().get(0).toString();
+                int dirNum = currentLocation.getDirInt(wrappedDirStr);
                 say(lastActionParams.getParameters().get(0).toString());
                 
-                // int dirNum = dirSymbols.indexOf(params.get(0));
-                // say("currentLocation:"+currentLocation);
-                // say(lastAction.toString());
-                // currentLocation = currentLocation.add(new CardinalVector(dirNum, 1));
-                // say("newLocation:"+currentLocation);
+                currentLocation = currentLocation.add(new CardinalVector(dirNum, 1));
             }
         }
-
-        // if our last action was a successful movement, 
-        // update our currentLocation accordingly
+        say("currentLocation: "+currentLocation);
 
         // for each grid square we know we can see, mark it as seen
-        int sight = 5;
+        // (will will re-mark any obstacles we 'unsaw' here in the next loop)
         List<Location> seen_locations = new ArrayList<Location>();
         for(int i=-5; i<=5; i++){
             for(int j=-5; j <=5; j++){
                 Location loc = new Location(i,j).add(currentLocation);
                 seen_locations.add(loc);
-            }            
+            }
         }
         mapstate.set_locations(seen_locations, CLEAR);
+        mapstate.set_location(currentLocation, "A");
 
         // update mental map according to percepts
         List<Percept> obstacles = categorizedPercepts.get("obstacle");
         if( obstacles!=null && !obstacles.isEmpty() ){
             ArrayList<Location> obsLocs = new ArrayList<Location>(obstacles.size());
             for(Percept obs : obstacles){
+
                 // extract the local coordinates
                 List<Parameter> params = obs.getParameters();
                 Number val0 = ((Numeral)params.get(0)).getValue();
@@ -126,11 +136,7 @@ public class ExploratoryAgent extends BaseAgent {
                 Location loc = new Location((int)val0, (int)val1);
 
                 // convert from local (agent-relative) coordinates to global coordinates
-                Location shifted = new Location(loc.toPosition().toLocal(currentLocation.toPosition()));
-                say("loc: "+loc);
-                say("shifted:"+shifted);
-                // Location pos = new Location(params.get(0), params.get(1));
-                // shift location wrt to agent current location
+                Location shifted = loc.add(currentLocation);
                 mapstate.set_location(shifted, OBSTACLE);
             }
             mapstate.print_array();
@@ -191,16 +197,19 @@ public class ExploratoryAgent extends BaseAgent {
             loc0 = loc.add(loc0);
         }
         loc0 = currentLocation.add(loc0);
+        
         // determine the direction of most unknowns within the window
         
-        say("\n\nULOCS");
+        say("\n\nULOCS" + loc0);
         // say(ulocs.toString());
 
         // Location::binary
         //get origin centered on agent, add up the Locations of each square that is valuable
         // (if )
 
-        return randomMove();
+        // return randomMove();
+        return randomBiasedMove(1,0,0,0);
+        // return null;
     }
 
     /** return a direction string, randomly selected according to bias */

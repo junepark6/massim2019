@@ -34,7 +34,6 @@ class MapElement{
     public int getLastSighting(){
         return timeLastSeen;
     }
-
 }
 
 
@@ -84,7 +83,7 @@ public class MentalMap<T>{
     // private Location myinds; // agent location in array indicies
     // private Location origin; // the pair of indexes 
 
-    private List<ArrayList<T>> map;
+    protected List<ArrayList<T>> map;
     private ArrayList<Location> frontier;
     private ArrayList<Location> visited;
     private int last_frontier_update; // counts since last time the frontier was updated
@@ -92,14 +91,19 @@ public class MentalMap<T>{
     private T initial_symbol;
     private ArrayList<T> special_features; // block generators, goal zones, etc
 
+
     public MentalMap(int idim, int jdim, T initial_symbol){
-        map = new ArrayList<ArrayList<T>>(idim);
-        for(int i=0; i<idim; i++){
-            ArrayList<T> jth = new ArrayList<T>(jdim);
-            for(int j=0; j<jdim; j++){
-                jth.add(initial_symbol);
+        // only init map if dimensions are valid (non-zero)
+        map = null;
+        if(idim!=0 && jdim!=0){
+            map = new ArrayList<ArrayList<T>>(idim);
+            for(int i=0; i<idim; i++){
+                ArrayList<T> jth = new ArrayList<T>(jdim);
+                for(int j=0; j<jdim; j++){
+                    jth.add(initial_symbol);
+                }
+                map.add(jth);
             }
-            map.add(jth);
         }
         frontier = new ArrayList<Location>();
         last_frontier_update = 0;
@@ -119,15 +123,42 @@ public class MentalMap<T>{
         this(80, 80, initial_symbol);
     }
 
+    /** use set of features to make a new map */
     public MentalMap(HashMap<Location, T> features, Location minloc, Location maxloc, T initial_symbol){
         
+        // init the map using initial_symbol
         this(maxloc.X()-minloc.X(), maxloc.Y()-maxloc.Y(), initial_symbol);
 
+        // add the features
         for(Map.Entry<Location, T> entry : features.entrySet()){
             T elem = entry.getValue();
             Location loc = entry.getKey();
             set_location(loc, elem);   
         }
+    }
+
+    /** Use map to make a new MentalMap */
+    public MentalMap(ArrayList<ArrayList<T>> map, T initial_symbol){
+        this(0, 0, initial_symbol); // this will init map to null
+        this.map = map;
+    }
+
+    /** make copy of Map, replacing entries according to mapping */
+    public <E> MentalMap<E> replace(HashMap<T, E> mapping){
+        int idim = getIDim();
+        int jdim = getJDim();
+        ArrayList<ArrayList<E>> newmap = new ArrayList<ArrayList<E>>(idim);
+        for(int i=0; i<idim; i++){
+            ArrayList<E> jth = new ArrayList<E>(jdim);
+            for(int j=0; j<jdim; j++){
+                T entry = get(i,j);
+                E newentry = mapping.get(entry);
+                // if(mapping.contains(entry)) mapping.get()
+                jth.add(newentry);
+            }
+            newmap.add(jth);
+        }
+        return new MentalMap<E>(newmap, mapping.get(this.initial_symbol));
     }
 
     public T get(int i, int j){
@@ -152,26 +183,30 @@ public class MentalMap<T>{
         return new Location[]{ new Location(minX, minY), new Location(maxX, maxY) };
     }
 
-    // /** ns=-1 means south, ns=1 means north, we=-1 means west and we=1 means east */
-    // public MentalMap quadrant(Location xy, int radius, int ns, int we){
-        
-    //     if(ns == -1){
-    //         xy.add(Direction.SOUTH, radius)
-    //     }else if(ns == 1){
-    //         xy.add(Direction.North, radius)
-    //     }
-    //     Location minloc = xy.add(Direction.WEST, radius).add(Direction.SOUTH, radius);
-    //     Location maxloc = xy.add(Direction.NORTH, radius).add(Direction.EAST, radius);
+    /** provide corner x,y coordinates */
+    public MentalMap<T> submap(Location lowerleftCorner, Location upperrightCorner){
+        lowerleftCorner = coords_to_indexes(lowerleftCorner);
+        upperrightCorner = coords_to_indexes(upperrightCorner);
+        int mini = lowerleftCorner.X();
+        int minj = lowerleftCorner.Y();
+        int maxi = upperrightCorner.X();
+        int maxj = upperrightCorner.Y();
+        ArrayList<ArrayList<T>> newmap = new ArrayList<ArrayList<T>>(maxi-mini);
+        for(ArrayList<T> line : map.subList(mini, maxi+1)){
+            newmap.add(new ArrayList<T>(line.subList(minj, maxj+1)));
+        }
+        return new MentalMap<T>(newmap, this.initial_symbol);
+    }
 
-    // }
-
-    public MentalMap submap(Location xy, int radius){
+    public MentalMap<T> submap(Location xy, int radius){
         Location minloc = xy.add(Direction.WEST, radius).add(Direction.SOUTH, radius);
         Location maxloc = xy.add(Direction.NORTH, radius).add(Direction.EAST, radius);
 
         HashMap<Location, T> features = getSurroundingFeatures(xy, radius);
         return new MentalMap<T>(features, minloc, maxloc, this.initial_symbol);
     }
+
+    
 
     public int getIDim(){
         return map.size();
