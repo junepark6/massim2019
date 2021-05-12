@@ -263,10 +263,9 @@ public class PercievingAgent extends Agent{
         updateObstacles();
         updateAttached(); 
 
-        broadcastAgentSightings(); 
-
+        broadcastAgentSightings();
         for(Message m : messages){
-            String loc = messages.percept.getParameters().get(0).toString();
+            String loc = m.message.getParameters().get(0).toString();
             Dot d = new Dot(loc);
             say("Message from "+m.sender+" loc "+d);
         }   
