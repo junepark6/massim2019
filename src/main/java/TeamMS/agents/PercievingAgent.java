@@ -13,6 +13,18 @@ import java.util.*;
 
 public class PercievingAgent extends Agent{
 
+    //     case 0: // no obstacle, not seen before, very valuable
+    //     return 2;
+    // case 1: // obstacle! has no value
+    //     return 0;
+    // case -1: // indicates 'seen' but no obstacle, kinda valuable
+    //     return 1;
+
+    public static final int WALL=2;
+    public static final int OBSTACLE=1;
+    public static final int UNKNOWN=0;
+    public static final int VISIBLE=-1;
+
     protected Set<Task> tasks = new HashSet<>();
     protected LinkedList<String> blocks = new LinkedList<String>();
     protected LinkedList<String> attachedIndex = new LinkedList<String>();
@@ -23,6 +35,12 @@ public class PercievingAgent extends Agent{
     protected Set<LinkedList<Parameter>> obstacles = new HashSet<>();
     protected Set<LinkedList<Parameter>> attached = new HashSet<>();
     protected String disabled;
+    // protected HashMap<String, Position> agentOffsets;
+    protected ArrayList<Dot> path = new ArrayList<Dot>();
+    protected ArrayList<Message> messages = new ArrayList<Message>();
+
+
+    protected HashMap<String, Position> agentOffsets;
 
     protected LinkedList<String> doneDispenser = new LinkedList<String>(); // type.x.y
     protected LinkedList<Action> plans = new LinkedList<Action>();
@@ -37,8 +55,8 @@ public class PercievingAgent extends Agent{
     protected Task task = null;
     protected String target = null;
     protected Info info = new Info();
-    
     protected int vision = 5;
+    protected ActionDispatch actionDispatch;
 
     protected Map<Integer, String> hold = new HashMap<Integer, String>() {{
         put(Direction.NORTH, null);
@@ -47,13 +65,25 @@ public class PercievingAgent extends Agent{
         put(Direction.WEST, null);
     }};
 
-    protected ActionDispatch actionDispatch;
-
     public PercievingAgent(String name, MailService mailbox) {
         super(name, mailbox);
         history = new ArrayList<Action>();
         actionDispatch = new ActionDispatch();
         disabled = "false";
+    }
+
+    protected class Message{
+        public final Percept message;
+        public final String sender;
+        Message(Percept message, String sender){
+            this.message = message;
+            this.sender = sender;
+        }
+    }
+
+    @Override
+    public void handleMessage(Percept message, String sender) {
+        messages.add(new Message(message, sender));
     }
 
     protected class Dot {
@@ -189,13 +219,35 @@ public class PercievingAgent extends Agent{
                 Parameter status = percept.getParameters().get(0);
                 this.disabled = status.toString();
                 if(this.disabled.equals("true")) say("\n\nDISABLED\n\n");
+                break;
+            case "seeAgent":
+                Parameter loc = percept.getParameters().get(0);
+                Dot dot = new Dot(loc.toString());
+                say("handle seeAgent "+dot);
+                break;
         }
     }
 
+
+    /** did we make any progress over the last 10 actions */
+    public void detectNoProgress(){
+        Set locations = new HashSet(path.subList(path.size()-10, path.size()-1));
+    }
+
+    // public void processPercepts2(){
+    //     List<Percept> percepts = getPercepts();
+    //     Map<String, List<Percept>> categorizedPercepts = percepts.stream()
+    //         .collect(Collectors.groupingBy(per -> per.getName()));
+        
+    // }
+
     public void processPercepts(){
         updateEmpty();
+
         if (info.lastAction != null)
             updateCoord();
+        path.add(new Dot(x,y));
+
         things.clear();
         obstacles.clear();
         attached.clear();
@@ -209,13 +261,24 @@ public class PercievingAgent extends Agent{
 
         updateThings();
         updateObstacles();
-        updateAttached();
+        updateAttached(); 
 
-        say("OBS "+obstacles);
+        broadcastAgentSightings(); 
 
+        // for(Message m : messages){
+
+        // }   
 
         // if last action was a successful clear(), zero out the clearing Dot
         if(info.lastAction.equals("clear") && info.lastActionResult.equals("success")) clearing=null;
+    }
+
+    /** broadcast to agents on team that we have seen an agent */
+    public broadcastAgentSightings(){
+        for(String loc: entity){
+            Percept p = new Percept("seeAgent", new Identifier(loc));
+            broadcast(p, getName());
+        }
     }
 
     public int entryValue(int value){
@@ -233,6 +296,22 @@ public class PercievingAgent extends Agent{
     public int positionValue(int x, int y){
         return entryValue(map[x][y]);
     }
+
+    // public int valueOfReachable(int xmin, int xmax, int ymin, int ymax, int limit){
+    //     int value=0;
+    //     int symbol;
+    //     for(int i=0; i<limit; i++){
+    //         if(i<xmin || i>xmax) continue;
+    //         if(symbol>=OBSTACLE) continue;
+    //         for(int j=0; j<limit; j++){
+    //             symbol = getFromMap(i,j);
+    //             if(symbol >= OBSTACLE) continue;
+    //             if(j<ymin || j>ymax) continue;
+    //             value += positionValue(x+i, x+j);
+    //         }
+    //     }
+    //     return value;
+    // }
 
     /** estimate how valuable the range of locations within the bounds are according to entryValue */
     public int valueOfSection(int xmin, int xmax, int ymin, int ymax){
@@ -333,12 +412,19 @@ public class PercievingAgent extends Agent{
         return false;
     }
 
-    /** are we surrounded on all sides? */
-    public Boolean trapped(){
-        // if all of these are 1, we are blocked in and need to clear
-        Map<String, Boolean> dirs = calcValidDirections(x,y); 
-        return trapped(dirs);
-    }
+    // /** are we surrounded on all sides? */
+    // public Boolean trapped(){
+    //     // if all of these are 1, we are blocked in and need to clear
+    //     Map<String, Boolean> dirs = calcValidDirections(x,y); 
+    //     return trapped(dirs);
+    // }
+
+    // /**  */
+    // public Boolean largeTrapped(){
+    // }
+
+    // public getSightBoundary(){
+    // }
 
     /** Either return a useful move action or a useful clear action */
     public Action valuableMoveOrClear(){
@@ -371,6 +457,8 @@ public class PercievingAgent extends Agent{
         if(trapped(valid)) return null;
 
         Map<String, Integer> weights = calcDirectionWeight(x, y, 10);
+        // say(valid.toString());
+        // say(weights.toString());
         // if we can't go in that direction (due to obstacle), 
         // overwrite the weights of that direction
         for(String key: weights.keySet()){
@@ -402,9 +490,6 @@ public class PercievingAgent extends Agent{
         return validMove();
     }
 
-    @Override
-    public void handleMessage(Percept message, String sender) {
-    }
 
     protected void updateCoord() {
         if (info.lastAction.equals("move") && info.lastActionResult.equals("success")) {
@@ -422,6 +507,17 @@ public class PercievingAgent extends Agent{
                     this.x -= 1;
                     break;
             }
+        }else if(info.lastAction.equals("move") && !info.lastActionResult.equals("success")){
+            // if move action failed, "failed_path", "failed_forbidden"
+            // there is a wall there (but how do I know which direction it runs?)
+            
+            int dir = fromDirSymbol(info.lastActionParams);
+            Position pos = getAdjacentPosition(this.x,this.y, dir);
+            String dot = new Dot(pos).toString();
+            if(!entity.contains(dot) && !dispenser.contains(dot) && !blocks.contains(dot)){
+                map[pos.x][pos.y] = WALL;
+                // say("Marked Wall at "+pos);
+            }  
         }
         // say("x and y is " + x + "," + y);
     }
@@ -430,6 +526,7 @@ public class PercievingAgent extends Agent{
         for (int i=-vision; i < vision+1; i++) {
             for (int j=-vision; j < vision+1; j++) {
                 if (Math.abs(i) + Math.abs(j) > vision) continue;
+                if (map[x+i][y+j]==WALL) continue; //if its a wall, don't overwrite
                 map[x+i][y+j] = -1;
             }
         }
@@ -645,15 +742,14 @@ public class PercievingAgent extends Agent{
             for(int i=0; i<map.length; i++){
                 if(i<xmin || i>xmax) continue;
                 
-            
-                
-                
 
                 // add symbol for (i,j) to string
                 int symbol = getFromMap(i,j);
                 if(x==i && y==j) strRep.append("AG");
                 else if(symbol==-1) strRep.append("  ");
                 else if(symbol==1) strRep.append("<>"); // obstacle
+                else if(symbol==WALL) strRep.append("WW"); // obstacle
+                else if(symbol==UNKNOWN) strRep.append("00");
                 else strRep.append("--");
 
             }
