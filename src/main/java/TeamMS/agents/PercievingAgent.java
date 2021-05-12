@@ -206,9 +206,13 @@ public class PercievingAgent extends Agent{
         for (Percept percept: percepts) {
             handlePercept(percept);
         }
+
         updateThings();
         updateObstacles();
         updateAttached();
+
+        say("OBS "+obstacles);
+
 
         // if last action was a successful clear(), zero out the clearing Dot
         if(info.lastAction.equals("clear") && info.lastActionResult.equals("success")) clearing=null;
@@ -243,18 +247,6 @@ public class PercievingAgent extends Agent{
         return value;
     }
 
-    // public int valueOfSection(int xmin, int xmax, int ymin, int ymax, HashMap<Integer, Integer> mapping){
-    //     int value = 0;
-    //     for(int i=0; i<map.length; i++){
-    //         if(i<xmin || i>xmax) continue;
-    //         for(int j=0; j<map[0].length; j++){
-    //             if(j<ymin || j>ymax) continue;
-    //             mapping.get()
-    //             value += positionValue(i, j);
-    //         }
-    //     }
-    //     return value;
-    // }
 
     public Map<String, Integer> calcDirectionValue(int x, int y, int distance){
         int lefthalf = valueOfSection(x-distance, x, y-distance, y+distance);
@@ -630,10 +622,32 @@ public class PercievingAgent extends Agent{
 
     public String submapString(int xmin, int xmax, int ymin, int ymax){
         StringBuilder strRep = new StringBuilder(); // or StringBuilder
-        for(int i=0; i<map.length; i++){
-            if(i<xmin || i>xmax) continue;
-            for(int j=0; j<map[0].length; j++){
-                if(j<ymin || j>ymax) continue;
+
+        boolean xmin_is_even = ((xmin % 2) == 0);
+        strRep.append("   ");
+        for(int i=xmin; i<=xmax; i++){
+            String symb = String.valueOf(i);
+            // if xmin is even, 
+            if((xmin_is_even && i%2!=0) || (!xmin_is_even && i%2==0)){
+                strRep.append("  ");
+                continue;
+            }
+            if(symb.length() < 2) symb = " " + symb;
+
+            strRep.append(symb);
+        }
+        strRep.append("\n");
+        // for(int i=xmin; i<xmax+3; i++) strRep.append("--");
+        // strRep.append("\n");
+        for(int j=0; j<map[0].length; j++){
+            if(j<ymin || j>ymax) continue;
+            strRep.append(j+"|");
+            for(int i=0; i<map.length; i++){
+                if(i<xmin || i>xmax) continue;
+                
+            
+                
+                
 
                 // add symbol for (i,j) to string
                 int symbol = getFromMap(i,j);
