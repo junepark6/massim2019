@@ -96,7 +96,7 @@ public class PercievingAgent extends Agent{
         }
 
         Dot(String st){
-            String[] xy = st.split(".");
+            String[] xy = st.split("\\.");
             this.x = new Integer(xy[0]);
             this.y = new Integer(xy[1]);
         }
@@ -266,8 +266,8 @@ public class PercievingAgent extends Agent{
         broadcastAgentSightings();
         for(Message m : messages){
             String loc = m.message.getParameters().get(0).toString();
+            say("Message from "+m.sender+" loc "+loc);
             Dot d = new Dot(loc);
-            say("Message from "+m.sender+" loc "+d);
         }   
 
         // if last action was a successful clear(), zero out the clearing Dot
