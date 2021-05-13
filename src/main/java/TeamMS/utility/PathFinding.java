@@ -36,7 +36,7 @@ public class PathFinding {
         }
     });
 
-    private Vector<String> ans = new Vector<String>();
+    public Vector<String> ans = new Vector<String>();
     private HashSet<String> closed = new HashSet<String>();
     private int maxL = 100;
     private int[][] scoreF = new int[maxL][maxL];
@@ -80,10 +80,12 @@ public class PathFinding {
             Arrays.fill(row, 0);
         }
 
+        System.out.println("a,b: " + a.toString() + "," + b.toString());
+
         // start node
         pq.add(new Weight(0, a));
         ans.add(a.toString());
-        path.add(new Location(a.x, a.y)); // add start node to the path
+        //path.add(new Location(a.x, a.y)); // add start node to the path
 
         // add obstacle into closed
         for (int i=0; i < map_x; i++) {
@@ -113,7 +115,7 @@ public class PathFinding {
             closed.add(xy);
             if (step > 0) {
                 ans.add(xy);
-                path.add(new Location(now.x, now.y)); // add now to the path
+                //path.add(new Location(now.x, now.y)); // add now to the path
             }
 
             for (int i=0; i < 4; i++) {
@@ -123,7 +125,7 @@ public class PathFinding {
                 xy = String.format("%d.%d", x, y);
                 if (closed.contains(xy)) continue;;
                 Dot curr = new Dot(x, y);
-                if(verbose) System.out.println("adjacent X,Y: " + curr.toString());
+                if(verbose) System.out.println("adjacent X,Y: " + curr.toString() + " [H]: " + scoreH[x][y] + " [G]: " + scoreG[x][y] + " [F]: " + scoreF[x][y]);
                 h(b, curr);
                 //int plus = 20;
                 //if (dx[i] == 0 || dy[i] == 0) plus = 10;

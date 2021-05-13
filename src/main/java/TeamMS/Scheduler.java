@@ -95,6 +95,12 @@ public class Scheduler implements AgentListener, EnvironmentListener{
                 case "ExploratoryAgent":
                     agent = new TeamMS.agents.ExploratoryAgent(agentConf.name, mailService);
                     break;
+                case "GreedyAgent":
+                    agent = new TeamMS.agents.GreedyAgent(agentConf.name, mailService);
+                    break;
+                case "PercievingAgent":
+                    agent = new TeamMS.agents.PercievingAgent(agentConf.name, mailService);
+                    break;
                 // [add further types here]
                 default:
                     System.out.println("Unknown agent type/class " + agentConf.className);
