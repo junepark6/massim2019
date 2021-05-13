@@ -7,7 +7,7 @@ import TeamMS.MailService;
 import TeamMS.utility.*;
 import massim.protocol.data.*;
 
-
+import java.util.stream.Collectors;
 import java.util.*;
 
 
@@ -35,6 +35,9 @@ public class PercievingAgent extends Agent{
     protected Set<LinkedList<Parameter>> obstacles = new HashSet<>();
     protected Set<LinkedList<Parameter>> attached = new HashSet<>();
     protected String disabled;
+
+    protected Set<Thing> agents = new HashSet<>();
+
     // protected HashMap<String, Position> agentOffsets;
     protected ArrayList<Dot> path = new ArrayList<Dot>();
     protected ArrayList<Message> messages = new ArrayList<Message>();
@@ -51,6 +54,7 @@ public class PercievingAgent extends Agent{
     protected Position origin = new Position(50, 50);
     protected int x = origin.x;
     protected int y = origin.y;
+    protected Position self = new Position(x,y);
 
     protected Task task = null;
     protected String target = null;
@@ -161,6 +165,10 @@ public class PercievingAgent extends Agent{
 
         public ActionDispatch(){}
 
+        public Action rotateAction(String direc){ // "cw" or "ccw"
+            return new Action("rotate", new Identifier(direc));
+        }
+
         public Action moveAction(String direc){
             return new Action("move", new Identifier(direc));
         }
@@ -179,7 +187,7 @@ public class PercievingAgent extends Agent{
     public void handlePercept(Percept percept) {
         switch (percept.getName()) {
             case "thing":
-                //say("thing is " + percept.getParameters());
+                say("thing is " + percept.getParameters());
                 things.add(percept.getParameters());
                 break;
             case "obstacle":
@@ -252,6 +260,7 @@ public class PercievingAgent extends Agent{
         obstacles.clear();
         attached.clear();
         attachedIndex.clear();
+        entity.clear();
         // dispenser.clear();
         // blocks.clear();
         List<Percept> percepts = getPercepts();
@@ -264,11 +273,51 @@ public class PercievingAgent extends Agent{
         updateAttached(); 
 
         broadcastAgentSightings();
+
+        Position self = new Position(x,y);
+
+        // for all entities, get their in term of local coords
+        List<Position> candidates = new ArrayList<Position>();
+        entity.stream().map(loc->new Dot(loc))
+                    .filter(loc->(!(loc.x==this.x && loc.y==this.y)))
+                    .distinct()
+                    .map(loc->loc.toPosition().toLocal(self))
+                    .forEach(loc->candidates.add((Position)loc));
+                //    .collect(Collectors.toList());
+        say("Cand"+candidates);
+
+        // get the messages other agents sent
         for(Message m : messages){
-            String loc = m.message.getParameters().get(0).toString();
-            say("Message from "+m.sender+" loc "+loc);
-            Dot d = new Dot(loc);
-        }   
+            if(m.sender == getName()) continue; //probably unnecessary, but just incase
+
+            // get the sent position (which is local to the sender)
+            String otherLoc = m.message.getParameters().get(0).toString();
+            Dot d = new Dot(otherLoc);
+            Position otherPos = d.toPosition();
+            List<Position> positions = candidates.stream()
+                                                 .filter(loc->loc.x==-otherPos.x && loc.y==-otherPos.y)
+                                                 .collect(Collectors.toList());
+            if(positions.isEmpty()) continue;
+            Position matching = positions.get(0);
+            say("\tmessage "+m.sender+" "+otherPos + " " + positions);
+            // need to send another message to the 
+            // sendMessage(, , getName()); //Percept message, String receiver, String sender
+    
+            // //for each element in entity
+            // for(String loc: entity){
+            //     Dot dd = new Dot(loc);
+            //     if(dd.x == x && dd.y == y) continue;
+            //     Position pos = dd.toPosition();
+            //     pos = pos.toLocal(origin);
+            //     dd = new Dot(pos);
+            //     if(pos.distanceTo(otherPos) < 5) say("Message from "+m.sender+" loc "+otherPos+"  vs "+ pos);
+
+            // }
+ 
+            // say("Message from "+m.sender+" loc "+loc+"  "+d.toString()+" "+entity.contains(d.toString()));
+        }
+        say(" ");
+        messages.clear();
 
         // if last action was a successful clear(), zero out the clearing Dot
         if(info.lastAction.equals("clear") && info.lastActionResult.equals("success")) clearing=null;
@@ -276,10 +325,32 @@ public class PercievingAgent extends Agent{
 
     /** broadcast to agents on team that we have seen an agent */
     public void broadcastAgentSightings(){
-        for(String loc: entity){
-            Percept p = new Percept("seeAgent", new Identifier(loc));
-            broadcast(p, getName());
-        }
+        // say("Entities"+entity);
+
+        Position self = new Position(x,y);
+        String selfStr = new Dot(x,y).toString();
+        String name = getName();
+
+        // for each string in format x.y in entity (entity is in global coords):
+        //  make a new Dot object for it
+        //  discard it if its the same as the agents current loc
+        //  convert to global coords
+        //  make a new 'seeAgent' percept
+        //  and broadcast the percept
+        entity.stream().map(loc->new Dot(loc))
+                       .filter(loc->(!(loc.x==this.x && loc.y==this.y)))
+                       .map(loc->new Dot(loc.toPosition().toLocal(self)))
+                       .map(loc->new Percept("seeAgent", new Identifier(loc.toString())))
+                       .forEach(per->broadcast(per, name));
+
+        // for(String loc: entity){ // entity is in global coords
+        //     Dot d = new Dot(loc);
+        //     if(d.x == this.x && d.y == this.y) continue;
+        //     Position pos = d.toPosition();
+        //     d = new Dot(pos.toLocal(new Position(x,y)));
+        //     Percept p = new Percept("seeAgent", new Identifier(d.toString()));
+        //     broadcast(p, getName());
+        // }
     }
 
     public int entryValue(int value){
@@ -458,6 +529,7 @@ public class PercievingAgent extends Agent{
         if(trapped(valid)) return null;
 
         Map<String, Integer> weights = calcDirectionWeight(x, y, 10);
+
         // say(valid.toString());
         // say(weights.toString());
         // if we can't go in that direction (due to obstacle), 
@@ -491,9 +563,9 @@ public class PercievingAgent extends Agent{
         return validMove();
     }
 
-
     protected void updateCoord() {
         if (info.lastAction.equals("move") && info.lastActionResult.equals("success")) {
+
             switch (info.lastActionParams) {
                 case "[n]":
                     this.y -= 1;
@@ -540,32 +612,31 @@ public class PercievingAgent extends Agent{
             int tx;
             int ty;
             String type;
-            switch (parameters.get(2).toString()) {
+
+            dx = Integer.parseInt(parameters.get(0).toString());
+            dy = Integer.parseInt(parameters.get(1).toString());
+            type = parameters.get(2).toString();
+            tx = x + dx;
+            ty = y + dy;
+            say("parameters "+parameters);
+
+            switch (type) {
                 case "dispenser":
-                    dx = Integer.parseInt(parameters.get(0).toString());
-                    dy = Integer.parseInt(parameters.get(1).toString());
                     // say("DISPENSER " + dx + "." + dy);
-                    type = parameters.get(3).toString();
-                    tx = x + dx;
-                    ty = y + dy;
                     dispenser.add(String.format("%s.dispenser.%d.%d", type, tx, ty));
                     // say("dispenser " + String.format("%s.%d.%d", type, tx, ty));
                     break;
                 case "block":
-                    dx = Integer.parseInt(parameters.get(0).toString());
-                    dy = Integer.parseInt(parameters.get(1).toString());
-                    // say("BLOCK" + dx + "." + dy);
-                    type = parameters.get(3).toString();
-                    tx = x + dx;
-                    ty = y + dy;
+                    say("BLOCK" + dx + "." + dy);
                     blocks.add(String.format("%s.block.%d.%d", type, tx, ty));
                     // say("block" + String.format("%s.%d.%d", type, tx, ty));
                     break;
                 case "entity":
-                   dx = Integer.parseInt(parameters.get(0).toString());
-                   dy = Integer.parseInt(parameters.get(1).toString());
                    entity.add(String.format("%d.%d", x+dx, y+dy));
-                   // need to tell agent we've seen it
+                   Thing t = new Thing(tx, ty, type, parameters.get(3).toString());
+                   agents.add(t);
+                   say("Entity"+t);
+                //    need to tell agent we've seen it
                    break;
             }
         }
