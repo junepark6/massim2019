@@ -19,6 +19,8 @@ public class PercievingAgent extends Agent{
     //     return 0;
     // case -1: // indicates 'seen' but no obstacle, kinda valuable
     //     return 1;
+    public static final int OPPONENT=7;
+    public static final int TEAMMATE=6;
     public static final int DISPENSER=5; 
     public static final int AGENT=4; 
     public static final int BLOCK=3;
@@ -37,6 +39,8 @@ public class PercievingAgent extends Agent{
     protected Set<LinkedList<Parameter>> things = new HashSet<>();
     protected Set<LinkedList<Parameter>> obstacles = new HashSet<>();
     protected Set<LinkedList<Parameter>> attached = new HashSet<>();
+    protected ArrayList<Position> goalzone = new ArrayList<>();
+
     protected String disabled;
 
     protected Set<Thing> agents = new HashSet<>();
@@ -94,6 +98,10 @@ public class PercievingAgent extends Agent{
         Message(Percept message, String sender, String receiver){
             this(message, sender);
             this.receiver = receiver;
+        }
+
+        public String toString(){
+           return  "to: "+receiver+" from: "+sender+" "+message.toString();
         }
     }
 
@@ -211,7 +219,12 @@ public class PercievingAgent extends Agent{
                 obstacles.add(percept.getParameters());
                 break;
             case "goal":
-                //say("goal is " + percept.getParameters());
+                List<Parameter> params = percept.getParameters();
+                int gx = (int)((Numeral)params.get(0)).getValue();
+                int gy = (int)((Numeral)params.get(1)).getValue();
+                goalzone.add(new Position(gx, gy));
+                // say("goal is " + percept.getParameters());
+                say("goalzone "+goalzone);
                 break;
             case "attached":
                 attached.add(percept.getParameters());
@@ -253,13 +266,7 @@ public class PercievingAgent extends Agent{
         Set locations = new HashSet(path.subList(path.size()-10, path.size()-1));
     }
 
-    // public void processPercepts2(){
-    //     List<Percept> percepts = getPercepts();
-    //     Map<String, List<Percept>> categorizedPercepts = percepts.stream()
-    //         .collect(Collectors.groupingBy(per -> per.getName()));
-        
-    // }
-
+    /* convert thing with map coordinates to coordinates w self as origin */
     public Thing localizedThing(Thing th){
         Position p = new Position(th.x, th.y);
         Position pp = p.toLocal(this.self);
@@ -284,12 +291,51 @@ public class PercievingAgent extends Agent{
         return new Position[]{global, local};
     }
 
+    public void processSharedCoordinateInformation(Message m){
+        if(m.message.getName() != "shareOffset") return;
+
+        String agent = m.message.getParameters().get(0).toString();
+        int x = (int)((Numeral)m.message.getParameters().get(1)).getValue();
+        int y = (int)((Numeral)m.message.getParameters().get(2)).getValue();
+        Position shift = new Position(x,y);
+        agentOffsets.put(agent, shift);
+    }
+
+    public void shareCoordinateInformationWith(String otherAgent, String targetAgent, Position otherOffset){
+        if(targetAgent.equals(otherAgent)) return;
+
+        Position offset = agentOffsets.get(targetAgent);
+        offset = offset.translate(otherOffset);
+        Percept p = new Percept("shareOffset", new Identifier(targetAgent), 
+                                                new Numeral(offset.x), 
+                                                new Numeral(offset.y));
+        // sendMessage(Percept message, String receiver, String sender)
+        sendMessage(p, otherAgent, getName());
+
+    }
+
+    public void shareCoordinateInformationWith(String otherAgent){
+        // if we have info about agents in addition to otherAgent
+        Position otherOffset = agentOffsets.get(otherAgent);
+        for(String agent: agentOffsets.keySet()){
+            shareCoordinateInformationWith(otherAgent, agent, otherOffset);
+        }
+    }
+
+    public void shareCoordinateInformationAbout(String otherAgent){
+        // if we have info about agents in addition to otherAgent
+        Position otherOffset = agentOffsets.get(otherAgent);
+        for(String agent: agentOffsets.keySet()){
+            shareCoordinateInformationWith(agent, otherAgent, otherOffset);
+        }
+    }
+
+
     /** broadcast to agents on team that we have seen an agent */
     public void broadcastAgentSightings(){
         // say("Entities"+entity);
         String name = getName();
         Position self = new Position(x,y);
-        // String selfStr = new Dot(x,y).toString();
 
         // for each string in format x.y in entity (entity is in global coords):
         //  make a new Dot object for it
@@ -297,16 +343,78 @@ public class PercievingAgent extends Agent{
         //  convert to global coords
         //  make a new 'seeAgent' percept
         //  and broadcast the percept
-        List<Percept> messages = entity.stream().map(loc->new Dot(loc))
-                                    .filter(loc->(!(loc.x==this.x && loc.y==this.y)))
-                                    .map(loc->this.concatLocalAndGlobalCoords(loc.toPosition(), self))
-                                    // .map(loc->new Dot(loc.toPosition().toLocal(self)))
-                                    .map(loc->new Percept("seeAgent", new Identifier(loc.toString())))
-                                    .collect(Collectors.toList());
-        if(! messages.isEmpty()) waitFlag--;
-        else waitFlag+=messages.size(); // add to waitflag the number of responses we need to wait for
-        say("Messages: "+messages);
+        List<Percept> messages = agents.stream()
+                        .filter(ag->ag.details.equals(this.team))
+                        .filter(ag->(!(ag.x==this.x && ag.y==this.y)))
+                        .map(th->this.concatLocalAndGlobalCoords(new Position(th.x, th.y), self))
+                        .map(loc->new Percept("seeAgent", new Identifier(loc.toString())))
+                        .collect(Collectors.toList());
+
+        if(messages.isEmpty()) waitFlag=0;
+        else waitFlag=messages.size(); // we filtered out the agents not in our team, so this is ok
+
+        say("WaitFlag: "+waitFlag);
         messages.stream().forEach(per->broadcast(per, name));
+    }
+
+    public void processAlignmentMessage(Message m, List<Thing> seen){
+
+            // skip message if wrong message type or if sender is self 
+            // (probably unnecessary, but just in case)
+            if(m.message.getName() != "seeAgent") return;
+            
+            // get the sent position from the string at index 0
+            // (the string should contain both the coords wrt the sender,
+            // and the coords wrt the sender's origin)
+            String localAndGlobalString = m.message.getParameters().get(0).toString();
+            Position [] localAndGlobal = extractLocalAndGlobalCoords(localAndGlobalString);
+
+            // otherPos is where the other agents sees us wrt to themselves
+            // globalPos is where the other agent sees us in their own global coordinate system
+            
+            // we are A, 
+            // otherPos is Ab
+            // globalPos is Boa
+            // -otherPos is Ba
+            // self is Aoa
+
+
+            Position otherPos = localAndGlobal[1]; // the position wrt to the sender (sender as origin)
+            Position globalPos = localAndGlobal[0]; // otherPos in sender's global coord sys
+                                                    // compare it to our position in global coord sys to
+                                                    // determine how to align our global coord systems
+
+            Position otherPosInverted = new Position(-otherPos.x, -otherPos.y);
+            say("SENDER:"+m.sender+" "+otherPos + " "+ globalPos);
+    
+            // compare it to the local positions of the agents we see
+            // keeping those where (sent position) == -(seen positions)
+            List<Thing> candidates = seen.stream().filter(ag->ag.x==-otherPos.x && ag.y==-otherPos.y)
+                                                  .collect(Collectors.toList());
+            if(candidates.isEmpty()) return;
+
+            say("CANDIDATES for "+m.sender + ": "+candidates);
+
+            waitFlag--; 
+            say("WaitFlag "+waitFlag);
+                
+            // for each remaining agent, calc its true position in our coordinate system
+            // and send it its coordinates, so it can calc where our origin is (in its coordinate sys)
+            Thing matching = candidates.get(0);
+            Position pos = new Position(matching.x, matching.y);
+            pos = self.translate(pos);
+
+            // using our current position and globalPos, determine how sender's coordinate system
+            // is offset from our's (I'm pretty sure this is incorrect, feel free to fix)
+            Position shift = globalPos.toLocal(self);
+            agentOffsets.put(m.sender, shift);
+
+            // say("\tmessage from "+m.sender+" "+otherPos + " "+ pos + " "+shift +" "+globalPos.toLocal(self));
+            say("\t otherPos="+otherPos+"  globalPos="+globalPos+"  self="+self+ "  otherPosInv="+otherPosInverted);
+            say("\t\t shift="+shift);
+            say("\n");
+            shareCoordinateInformationWith(m.sender);
+            shareCoordinateInformationAbout(m.sender);
     }
 
 
@@ -326,66 +434,29 @@ public class PercievingAgent extends Agent{
                                 .filter(ag->ag.details.equals(this.team))
                                 .filter(ag->(!(ag.x==this.x && ag.y==this.y)))
                                 .map(ag->this.localizedThing(ag))
-                                .collect(Collectors.toList());        
+                                .collect(Collectors.toList());
+        int numDiscardedAgents = agents.size() - seen.size();   
+        waitFlag -= numDiscardedAgents; 
+
         say("All Agents: "+agents);
         say("Seen Agents: "+seen + " (self at "+ self + ") w team: "+this.team);
-
+        say("Inbox: "+inbox.toString());
         // find the messages that indicate that this agent and another see each other
         // get the inbox other agents sent, compare the entities they 
-        for(Message m : inbox){
-            
-            // skip message if wrong message type or if sender is self 
-            // (probably unnecessary, but just in case)
-            if(m.sender == getName()) continue; 
-            if(m.message.getName() != "seeAgent"){
-                say("!");
-                continue;
-            }
-
-            // get the sent position from the string at index 0
-            // (the string should contain both the coords wrt the sender,
-            // and the coords wrt the sender's origin)
-            String localAndGlobalString = m.message.getParameters().get(0).toString();
-            Position [] localAndGlobal = extractLocalAndGlobalCoords(localAndGlobalString);
-            Position otherPos = localAndGlobal[1]; // the position wrt to the sender (sender as origin)
-            Position globalPos = localAndGlobal[0]; // otherPos in sender's global coord sys
-                                                    // compare it to our position in global coord sys to
-                                                    // determine how to align our global coord systems
-            // say(otherPos.toString());
-
-            // compare it to the local positions of the agents we see
-            // keeping those where (sent position) == -(seen positions)
-            List<Thing> candidates = seen.stream().filter(ag->ag.x==-otherPos.x && ag.y==-otherPos.y)
-                                                  .collect(Collectors.toList());
-            if(candidates.isEmpty()){
-                say("NO CANDIDATES for "+ m.sender);
-                continue;
-            }
-            // for each remaining agent, calc its true position in our coordinate system
-            // and send it its coordinates, so it can calc where our origin is (in its coordinate sys)
-            Thing matching = candidates.get(0);
-            Position pos = new Position(matching.x, matching.y);
-            pos = self.translate(pos);
-
-            // using our current position and globalPos, determine how sender's coordinate system
-            // is offset from our's (I'm pretty sure this is incorrect, feel free to fix)
-            Position shift = self.toLocal(globalPos);
-            
-            agentOffsets.put(m.sender, shift);
-            say("\tmessage "+m.sender+" "+otherPos + " "+ candidates + " "+ pos + " "+shift);
-
-        }
-
-        say(" ");
+        inbox.stream().distinct().forEach(m->processAlignmentMessage(m, seen));
+        inbox.stream().distinct().forEach(m->processSharedCoordinateInformation(m));        
+        say("agentOffsets: "+agentOffsets);
+        
+        say("\n\n");
     }
 
     /** translate pos from the coordinate system of agent agentName to our coordinate system */
     public Position translateFrom(String agentName, Position pos){
         // this math may be incorrect
         Position translator = agentOffsets.get(agentName);
-        return translator.translate(pos);
-
+        return pos.toLocal(translator);
     }
+
 
     // public void processInboxForAgentAlignment2(){
     //     for(Message m : inbox){
@@ -847,6 +918,9 @@ public class PercievingAgent extends Agent{
     }
 
     public int getFromMap(int i, int j){
+        Thing x = agents.stream().filter(ag->(ag.x==i && ag.y==j)).findFirst().orElse(null);
+        if(x!=null && x.details.equals(team)) return TEAMMATE;
+        if(x!=null && !x.details.equals(team)) return OPPONENT;
         return map[i][j];
     }
 
@@ -901,7 +975,14 @@ public class PercievingAgent extends Agent{
                 else if(symbol==1) strRep.append("<>"); // obstacle
                 else if(symbol==WALL) strRep.append("WW"); // obstacle
                 else if(symbol==UNKNOWN) strRep.append("00");
-                else strRep.append("--");
+                else if(symbol==TEAMMATE) strRep.append("AT");
+                else if(symbol==OPPONENT) strRep.append("AO");
+                else if(symbol==AGENT) strRep.append("A?");
+
+                else{
+                    say("Symbol "+symbol);
+                    strRep.append("--");
+                }
 
             }
             strRep.append("\n");
