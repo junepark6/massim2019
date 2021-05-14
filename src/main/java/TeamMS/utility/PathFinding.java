@@ -42,7 +42,7 @@ public class PathFinding {
     private int[][] scoreF = new int[maxL][maxL];
     private int[][] scoreG = new int[maxL][maxL];
     private int[][] scoreH = new int[maxL][maxL];
-    private boolean verbose = false;
+    private boolean verbose = true;
     private ArrayList<Location> path;
 
     public PathFinding(int[][] map, int x1, int y1, int x2, int y2) {
@@ -106,7 +106,8 @@ public class PathFinding {
 
         while (!ans.lastElement().equals(b.toString())) {
            if(verbose) System.out.println("#STEP: " + step);
-            now = pq.poll().xy;
+            if (pq.size() > 0) now = pq.poll().xy;
+            else break;
             String xy = now.toString();
             if(verbose) System.out.println("CURRENT XY: " + xy);
 
