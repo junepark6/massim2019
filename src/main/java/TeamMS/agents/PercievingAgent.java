@@ -201,7 +201,11 @@ public class PercievingAgent extends Agent{
         public Action clearAction(int x, int y){
             return new Action("clear", new Numeral(x), new Numeral(y));
         }
+        public Action clearAction(Position xy){
+            return new Action("clear", new Numeral(xy.x), new Numeral(xy.y));
+        }
     }
+
 
     @Override
     public void handlePercept(Percept percept) {
@@ -461,9 +465,7 @@ public class PercievingAgent extends Agent{
     // public void processInboxForAgentAlignment2(){
     //     for(Message m : inbox){
     //         if(m.message.getName() != "truePosition") continue;
-    //         String otherLoc = m.message.getParameters().get(0).toString();
-
-            
+    //         String otherLoc = m.message.getParameters().get(0).toString();            
     //     }
     // }
 
@@ -499,6 +501,15 @@ public class PercievingAgent extends Agent{
 
         // if last action was a successful clear(), zero out the clearing Dot
         if(info.lastAction.equals("clear") && info.lastActionResult.equals("success")) clearing=null;
+    }
+
+    public boolean lastActionWasSuccessful(){
+        return info.lastActionResult.equals("success");
+    }
+
+    public String lastActionWasMove(){
+        if(!info.lastAction.equals("move")) return null;
+        return info.lastActionParams;
     }
 
     public int entryValue(int value){
@@ -623,6 +634,14 @@ public class PercievingAgent extends Agent{
         return valid;
     }
 
+    /** are we surrounded on 3 sides? */
+    public Boolean culdesac(Map<String, Boolean> dirs){
+        Collection<Boolean> valid = dirs.values();
+        long numTrues = valid.stream().filter(entry->entry==true).count();
+        if(numTrues==1) return true;
+        else return false;
+    }    
+
     /** are we surrounded on all sides? */
     public Boolean trapped(Map<String, Boolean> dirs){
         HashSet<Boolean> valid = new HashSet<Boolean>(dirs.values());
@@ -631,20 +650,6 @@ public class PercievingAgent extends Agent{
         else if(singleentry && valid.contains(false)) return true;
         return false;
     }
-
-    // /** are we surrounded on all sides? */
-    // public Boolean trapped(){
-    //     // if all of these are 1, we are blocked in and need to clear
-    //     Map<String, Boolean> dirs = calcValidDirections(x,y); 
-    //     return trapped(dirs);
-    // }
-
-    // /**  */
-    // public Boolean largeTrapped(){
-    // }
-
-    // public getSightBoundary(){
-    // }
 
     /** Either return a useful move action or a useful clear action */
     public Action valuableMoveOrClear(){
@@ -669,6 +674,51 @@ public class PercievingAgent extends Agent{
         }else clear = clearing;
         return actionDispatch.clearAction(clear.x, clear.y);
     }
+
+    /** move in any direction except exactly backwards (unless all other sides blocked) */
+    public Action randomProgressMove(){
+        Map<String, Boolean> valid = calcValidDirections(x,y);
+        if(culdesac(valid)) return validMove();
+        int [] dirs = new int [4];
+        // convert 0 to 1 and 1 to 0
+        for(int i=0; i<4; i++){
+            String s = toDirSymbol(i);
+            boolean b = valid.get(s);
+            if(b) dirs[i] = 1;
+            else dirs[i] = 0;
+        }
+
+        // disallow moving into the space we previously occupied
+        if((lastActionWasMove()!=null) && lastActionWasSuccessful()){
+            String dir = cleanDirectionSymbol(info.lastActionParams);
+            dir = new Position(x,y).oppositeDirection(dir);
+            dirs[fromDirSymbol(dir)] = 0;
+        }        
+        return randomBiasedMove(dirs[0], dirs[1], dirs[2], dirs[3]);
+    }
+
+    /** choose a random action, with moving in the same 
+    direction as last action more likely (if possible) */
+    public Action probableContinueMove(){
+        Map<String, Boolean> valid = calcValidDirections(x,y);
+        
+        int [] dirs = new int [4];
+        for(int i=0; i<4; i++){
+            String s = toDirSymbol(i);
+            boolean b = valid.get(s);
+            if(b) dirs[i] = 1;
+            else dirs[i] = 0;
+        }
+        if((lastActionWasMove()!=null) && lastActionWasSuccessful()){
+            String dir = cleanDirectionSymbol(info.lastActionParams);
+            dirs[fromDirSymbol(dir)] *= 3;
+        }
+        return randomBiasedMove(dirs[0], dirs[1], dirs[2], dirs[3]);
+    }
+
+    // public Action randomProgressMoveOrClear(){
+
+    // }
 
     /** determine which direction is most useful to move in according to how
     much unvisited area is within some number of squares */
@@ -713,6 +763,7 @@ public class PercievingAgent extends Agent{
 
     protected void updateCoord() {
         if (info.lastAction.equals("move") && info.lastActionResult.equals("success")) {
+            self = self.moved(cleanDirectionSymbol(info.lastActionParams), 1);
 
             switch (info.lastActionParams) {
                 case "[n]":
@@ -728,7 +779,9 @@ public class PercievingAgent extends Agent{
                     this.x -= 1;
                     break;
             }
-        }else if(info.lastAction.equals("move") && !info.lastActionResult.equals("success")){
+        }else if(info.lastAction.equals("move") && 
+                 (info.lastActionResult.equals("failed_path") ||
+                 info.lastActionResult.equals("failed_forbidden"))){
             // if move action failed, "failed_path", "failed_forbidden"
             // there is a wall there (but how do I know which direction it runs?)
             
@@ -877,6 +930,12 @@ public class PercievingAgent extends Agent{
         }
         return direc;
     }
+
+    /** ensure dir is a direction symbol and is not wrapped in square brackets */
+    public static String cleanDirectionSymbol(String dir){
+        return toDirSymbol(fromDirSymbol(dir));
+    }
+
 
     /** return a completely random direction */
     public String randomDirection(){
