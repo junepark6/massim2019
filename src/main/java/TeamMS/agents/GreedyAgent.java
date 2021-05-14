@@ -4,58 +4,61 @@ import TeamMS.utility.Direction;
 import TeamMS.utility.PathFinding;
 import eis.iilang.*;
 import TeamMS.MailService;
-// import javafx.scene.transform.Rotate;
 import massim.protocol.data.*;
 
 import java.util.*;
 
-
 public class GreedyAgent extends Agent{
 
-    private String team = "A";
-    private int step = 0;
-    private Set<Task> tasks = new HashSet<>();
-    private LinkedList<String> blocks = new LinkedList<String>();
-    private LinkedList<String> attachedIndex = new LinkedList<String>();
-    private LinkedList<Action> plans = new LinkedList<Action>();
-    private LinkedList<String> dispenser = new LinkedList<String>(); // type.x.y
-    //private LinkedList<String> doneDispenser = new LinkedList<String>(); // type.x.y
-    private Set<LinkedList<Parameter>> things = new HashSet<>();
-    private Set<LinkedList<Parameter>> obstacles = new HashSet<>();
-    private Set<LinkedList<Parameter>> attached = new HashSet<>();
-    private Set<Dot> goals = new HashSet<>();
-    private int[][] map = new int[100][100];
-    private Set<String> visited = new HashSet<>();
-    private boolean initMap = false;
-    protected ArrayList<Message> messages = new ArrayList<Message>();
-
-    private Set<String> entity = new HashSet<>();
-    private String prev_entity = null;
-    protected HashMap<String, stepInfo> prevCoor = new HashMap<>();
-    protected HashMap<String, stepInfo> currCoor = new HashMap<>();
-
-    private Task task = null;
-    private String target = null;
-    private Info info = new Info();
-    private int x = 50;
-    private int y = 50;
-    private int px = 0;
-    private int py = 0;
-    private int vision = 5;
-    private Map<String, String> hold = new HashMap<String, String>() {{
+    private String team = "A"; // team association
+    private int step = 0;      // time step
+    private Set<LinkedList<Parameter>> things = new HashSet<>(); // all things within agents's vision
+    private Set<LinkedList<Parameter>> obstacles = new HashSet<>(); // all obstacles within agent's vision
+    private int[][] map = new int[100][100]; // map used for description of obstacles
+    private int x = 50; // origin x of agent, updated at each time step
+    private int y = 50; // origin y of agent, updated at each time step
+    private int px = 0; // x at previous time step
+    private int py = 0; // y at previous time step
+    private LinkedList<String> dispenser = new LinkedList<String>(); // location of dispensers, element is "[blockType],dispenser,[x],[y]".
+    private LinkedList<String> blocks = new LinkedList<String>(); // blocks from 'things' linked list, element is "[blockType],block,[x],[y]".
+    private Set<String> entity = new HashSet<>(); // relative position of our team agents
+    private String prev_entity = null; // relative position of our team agents at previous time step
+    private Set<LinkedList<Parameter>> attached = new HashSet<>(); // attached blocks from 'things' linked list.
+    private LinkedList<String> attachedIndex = new LinkedList<String>(); // absolute positions of attached blocks, "x + relative x, y + relative y"
+    private LinkedList<Action> plans = new LinkedList<Action>(); // action plans for targeting dispenser or blocks based on A* algorithm
+    private Set<Task> tasks = new HashSet<>(); // task set
+    private Set<Dot> goals = new HashSet<>(); // goal cells
+    private Set<String> visited = new HashSet<>(); // visited x,y location
+    private boolean initMap = false; // only for initial set up of map[][]
+    protected ArrayList<Message> messages = new ArrayList<Message>(); // message inbox, all broadcastings are saved here.
+    protected HashMap<String, stepInfo> currCoor = new HashMap<>(); // [agentName] => [stepInfo] which is position(their x, y, and relative x, y) of other agents along the time step
+    protected HashMap<String, stepInfo> prevCoor = new HashMap<>(); // [agentName] => [stepInfo] which is position of other agents along previous time step
+    private String target = null; // current target dispenser or block
+    private Info info = new Info(); // lastAction, lastActionParams, lastActionResult
+    private int vision = 5; // agents' vision range
+    private Map<String, String> hold = new HashMap<String, String>() {{ // carrying blocks, [direction] => [blockType]
         put("n", null);
         put("e", null);
         put("s", null);
         put("w", null);
     }};
 
+    // information related to last actions
+    private class Info {
+        private String lastAction = null; // e.g. move, request, attach
+        private String lastActionParams = null; // e.g. n, w, e, s
+        private String lastActionResult = null; // e.g. success, failed_path
+        Info() {}
+    }
+
+    // position of other agents along the time step
     private class stepInfo {
-        public int step;
-        public String agentName;
-        public int absx;
-        public int absy;
-        public int relx;
-        public int rely;
+        public int step; // time step
+        public String agentName; // e.g. agentsA8
+        public int absx; // agent's x
+        public int absy; // agent's y
+        public int relx; // relative x based on current agent
+        public int rely; // relative y based on current agent
 
         stepInfo(int step, String name, int x, int y, int x0, int y0) {
             this.step = step;
@@ -74,20 +77,17 @@ public class GreedyAgent extends Agent{
         }
     }
 
-
-    public GreedyAgent(String name, MailService mailbox) {
-        super(name, mailbox);
-    }
-
+    // message class for communications
     protected class Message{
-        public final Percept message;
-        public final String sender;
+        public final Percept message; // contains strings
+        public final String sender; // sender's name
         Message(Percept message, String sender){
             this.message = message;
             this.sender = sender;
         }
     }
 
+    // simple class represents x,y position
     private class Dot {
         public int x;
         public int y;
@@ -117,13 +117,7 @@ public class GreedyAgent extends Agent{
         }
     }
 
-    private class Info {
-        private String lastAction = null;
-        private String lastActionParams = null;
-        private String lastActionResult = null;
-        Info() {}
-    }
-
+    // class represents task to submit
     private class Task {
         private String name;
         private int deadline;
@@ -146,20 +140,24 @@ public class GreedyAgent extends Agent{
         }
     }
 
+    public GreedyAgent(String name, MailService mailbox) {
+        super(name, mailbox);
+    }
 
+
+    /*
+     this void method get perception and put them in terms of type such as thing, obstacle, goal, lastAction...
+     */
     @Override
     public void handlePercept(Percept percept) {
         switch (percept.getName()) {
             case "thing":
-                //say("thing is " + percept.getParameters());
                 things.add(percept.getParameters());
                 break;
             case "obstacle":
-                //say("obstacle is " + percept.getParameters());
                 obstacles.add(percept.getParameters());
                 break;
             case "goal":
-                //say("goal is " + percept.getParameters());
                 int gx = Integer.parseInt(percept.getParameters().get(0).toString());
                 int gy = Integer.parseInt(percept.getParameters().get(1).toString());
                 goals.add(new Dot(gx,gy));
@@ -167,10 +165,6 @@ public class GreedyAgent extends Agent{
             case "attached":
                 attached.add(percept.getParameters());
                 break;
-            //case "name":
-            //    if (name == null)
-            //        name = percept.getParameters().get(0).toString();
-            //    break;
             case "team":
                 team = percept.getParameters().get(0).toString();
                 break;
@@ -180,20 +174,16 @@ public class GreedyAgent extends Agent{
             case "lastAction":
                 Parameter lastAction = percept.getParameters().get(0);
                 info.lastAction = lastAction.toString();
-                //say("lastAction is " + info.lastAction);
                 break;
             case "lastActionParams":
                 Parameter lastActionParams = percept.getParameters().get(0);
                 info.lastActionParams = lastActionParams.toString();
-                //say("lastActionParams is " + info.lastActionParams);
                 break;
             case "lastActionResult":
                 Parameter lastActionResult = percept.getParameters().get(0);
                 info.lastActionResult = lastActionResult.toString();
-                //say("lastActionResult is " + info.lastActionResult);
                 break;
             case "task":
-                //say("task is " + percept.getParameters());
                 Task task = new Task(percept.getParameters());
                 tasks.add(task);
                 break;
@@ -201,7 +191,11 @@ public class GreedyAgent extends Agent{
     }
 
     @Override
+    /*
+     this is the main method to describe the agent at each step
+     */
     public Action step() {
+        // clear the previous sight perception
         things.clear();
         obstacles.clear();
         attached.clear();
@@ -211,27 +205,238 @@ public class GreedyAgent extends Agent{
         prev_entity = String.join("|", entity);
         entity.clear();
 
+        // read current perception
         List<Percept> percepts = getPercepts();
         for (Percept percept: percepts) {
             handlePercept(percept);
         }
 
+        // map settng at step 1
         if (!initMap) {
             initMap = true;
             setMap();
         }
+
+        // update x, y based on lastAction (start 50,50 at step 1)
         if (info.lastAction != null)
             updateCoord();
-        say("x and y is " + x + "," + y);
-        visited.add(new Dot(x,y).toString());
-        updateEmpty();
-        updateThings();
-        updateObstacles();
-        updateAttached();
 
+        // memorize visited tiles for random moving
+        visited.add(new Dot(x,y).toString());
+        // update map to set empty tile
+        updateEmpty();
+        // update lists about things
+        updateThings();
+        // update map to set obstacles
+        updateObstacles();
+        // update attached block informations
+        updateAttached();
+        // update all other agent's location along time step to trace them, but they have to meet at least once.
+        updateTimeStep();
+
+
+        // set target null if doing request is done successfully
+        if (info.lastAction.equals("request") && info.lastActionResult.equals("success")) {
+            target = null;
+        }
+
+        // set target null if doing attach is done successfully
+        if (info.lastAction.equals("attach") && info.lastActionResult.equals("success")) {
+            String btype = target.split("\\.")[0];
+            // update information about carrying blocks
+            switch (info.lastActionParams) {
+                case "[n]":
+                    hold.put("n", btype);
+                    break;
+                case "[e]":
+                    hold.put("e", btype);
+                    break;
+                case "[s]":
+                    hold.put("s", btype);
+                    break;
+                case "[w]":
+                    hold.put("w", btype);
+                    break;
+            }
+            target = null;
+        }
+
+        // keep follow plans if there is no crash
+        if (plans.size() > 0 && info.lastActionResult.equals("success")) {
+            Action a = plans.remove(0);
+            String d = a.getParameters().toString().substring(1,2);
+            // broadcast it's moving to all others
+            reportEntity(true, d);
+            return a;
+        }
+
+        // their is no plan and target (dispensor or block), find the closest adjacent block
+        if (target == null) {
+            int min_dist = 9999;
+            for (String d : blocks) {
+                String[] dinfo = d.split("\\.");
+                if (!hold.containsValue(dinfo[0])) {
+                    int x0 = Integer.parseInt(dinfo[2]);
+                    int y0 = Integer.parseInt(dinfo[3]);
+                    String key = String.format("%d.%d", x0, y0);
+                    if (attachedIndex.contains(key)) continue;
+                    int dist = getManhattanDistance(x,y,x0,y0);
+                    if (dist < min_dist) {
+                        min_dist = dist;
+                        target = d;
+                    }
+                }
+            }
+        }
+
+        // their is no plan and target (dispensor or block), find the closest adjacent dispenser
+        if (target == null) {
+            int min_dist = 9999;
+            for (String d : dispenser) {
+                String[] dinfo = d.split("\\.");
+                if (!hold.containsValue(dinfo[0])) {
+                    int x0 = Integer.parseInt(dinfo[2]);
+                    int y0 = Integer.parseInt(dinfo[3]);
+                    int dist = getManhattanDistance(x,y,x0,y0);
+                    if (dist < min_dist) {
+                        min_dist = dist;
+                        target = d;
+                    }
+                }
+            }
+        }
+
+        // If there is target, then set the plans based on A* path finding algorithm.
+        if (target != null) {
+            String[] dinfo = target.split("\\.");
+            int tx = Integer.parseInt(dinfo[2]);
+            int ty = Integer.parseInt(dinfo[3]);
+
+            plans.clear();
+            PathFinding pf = new PathFinding(map, x, y, tx, ty);
+
+            int size = pf.ans.size();
+            // put actions into plans from the solution path
+            if (size > 2) {
+                for (int i=0; i < size-2; i++) {
+                    String[] p1 = pf.ans.get(i).split("\\.");
+                    String[] p2 = pf.ans.get(i+1).split("\\.");
+                    Integer horizonal = Integer.parseInt(p2[0]) - Integer.parseInt(p1[0]);
+                    Integer vertical = Integer.parseInt(p2[1]) - Integer.parseInt(p1[1]);
+                    // TODO: should rotate if agent has attached at given direction
+                    switch (horizonal) {
+                        case 1:
+                            plans.add(new Action("move", new Identifier("e")));
+                            break;
+                        case -1:
+                            plans.add(new Action("move", new Identifier("w")));
+                            break;
+                    }
+                    switch (vertical) {
+                        case 1:
+                            plans.add(new Action("move", new Identifier("s")));
+                            break;
+                        case -1:
+                            plans.add(new Action("move", new Identifier("n")));
+                            break;
+                    }
+                    target = null;
+                }
+                Action a = plans.remove(0);
+                String d = a.getParameters().toString().substring(1,2);
+                // broadcast it's moving to all others
+                reportEntity(true, d);
+                return a;
+            }
+
+            // dispenser or blocks are adjacent, then try to do request or attach
+            int subx = tx - x;
+            int suby = ty - y;
+            String dx = "w";
+            String dy = "n";
+            if (subx > 0) dx = "e";
+            if (suby > 0) dy = "s";
+
+            int dist = getManhattanDistance(x, y, tx, ty);
+            if (dist == 1) {
+                reportEntity(false, "r");
+                if (dinfo[1].equals("dispenser")) {
+                    if (subx == -1) return new Action("request", new Identifier("w"));
+                    if (subx ==  1) return new Action("request", new Identifier("e"));
+                    if (suby == -1) return new Action("request", new Identifier("n"));
+                    if (suby ==  1) return new Action("request", new Identifier("s"));
+                } else if (dinfo[1].equals("block")) {
+                    if (subx == -1) return new Action("attach", new Identifier("w"));
+                    if (subx ==  1) return new Action("attach", new Identifier("e"));
+                    if (suby == -1) return new Action("attach", new Identifier("n"));
+                    if (suby ==  1) return new Action("attach", new Identifier("s"));
+
+                }
+            }
+        }
+
+        // If no plan and targets, then just move randomly.
+        // If previous move is successful and next tile is unvisited, then it goes straight.
+        if (info.lastAction.equals("move") && info.lastActionResult.equals("success")) {
+            String direc = info.lastActionParams.toString().substring(1,2);
+            String curr = new Dot(x,y).toString();
+            switch (direc) {
+                case "n":
+                    curr = new Dot(x,y-1).toString();
+                    break;
+                case "s":
+                    curr = new Dot(x,y+1).toString();
+                    break;
+                case "w":
+                    curr = new Dot(x-1,y).toString();
+                    break;
+                case "e":
+                    curr  = new Dot(x+1,y).toString();
+                    break;
+            }
+            if (!visited.contains(curr)) {
+                // broadcast it's moving to all others
+                reportEntity(true, direc);
+                return new Action("move", new Identifier(direc));
+            }
+        }
+        // random moving. In this function, it broadcasts it's moving to all others.
+        return randomMove();
+    }
+
+    @Override
+    public void handleMessage(Percept message, String sender) {
+        messages.add(new Message(message, sender));
+    }
+
+    /*
+     this is the main method to describe the agent at each step
+     */
+    private void reportEntity(boolean isMove, String direc) {
+        String move_str = "None";
+        if (isMove) move_str = direc;
+        Vector<String> boxes = new Vector<String>();
+        for (String block:hold.keySet()) {
+            String btype = hold.get(block);
+            if (btype != null) {
+                boxes.add(btype);
+            }
+        }
+        String entities = String.join("|", entity);
+        String carrying = String.join(",", boxes);
+        String message = String.format("status;%d;%s;%s;%s;%d,%d;%s", step, getName(), carrying, move_str, x, y, entities);
+        Percept per = new Percept("seeAgent", new Identifier(message));
+        broadcast(per, getName());
+    }
+
+    /*
+     It let memorizes all other agents moving from the messages and place their positions in its own map along time steps.
+     It set the hash map which key is other agent names, and value is stepInfo class.
+     The limitation is that they have to meet each other at once.
+     Otherwise, they cannot share their coordinates because they do not know the actual absolute positions
+     */
+    private void updateTimeStep() {
         Iterator<Message> m = messages.iterator();
-        say("step is " + step);
-        say("prev_entity is " + prev_entity);
         while (m.hasNext()) {
             Percept xx = m.next().message;
             String contents = xx.getParameters().get(0).toString();
@@ -242,15 +447,11 @@ public class GreedyAgent extends Agent{
 
             // enroll prev step if their percept entity is opposite
             if (iStep == step-1 && minfo.length > 6) {
-                //say("PREV STEP!!!!!!!!!!!");
                 for (String re: minfo[6].split("\\|")) {
                     String[] xy = re.split(",");
                     String per = String.format("%d,%d",  -Integer.parseInt(xy[0]), -Integer.parseInt(xy[1]));
                     for (String pe:prev_entity.split("\\|")) {
-                        //say("PR is " + pe);
-                        //say("per is " + per);
                         if (per.equals(pe)) {
-                            //say("PREV~~~~~EQUAL!!");
                             String[] gap = pe.split(",");
                             String[] absxy = minfo[5].split(",");
                             stepInfo si = new stepInfo(iStep,
@@ -294,255 +495,10 @@ public class GreedyAgent extends Agent{
                 currCoor.put(name, si);
             }
 
+            // remove old time trajectories
             if (iStep < step-2) {
                 m.remove();
             }
-            //say("text is " + contents);
-        }
-        //say("PREV COOR is " + prevCoor.toString());
-        //say("CURR COOR is " + currCoor.toString());
-        //say("PREV KEY IS "  + prevCoor.keySet().toString());
-        //say("CURR KEY IS "  + currCoor.keySet().toString());
-
-
-
-
-        if (info.lastAction.equals("request") && info.lastActionResult.equals("success")) {
-            say("TARGET WAS " + target);
-            //doneDispenser.add(target);
-            target = null;
-        }
-
-        if (info.lastAction.equals("attach") && info.lastActionResult.equals("success")) {
-            String btype = target.split("\\.")[0];
-            switch (info.lastActionParams) {
-                case "[n]":
-                    hold.put("n", btype);
-                    break;
-                case "[e]":
-                    hold.put("e", btype);
-                    break;
-                case "[s]":
-                    hold.put("s", btype);
-                    break;
-                case "[w]":
-                    hold.put("w", btype);
-                    break;
-            }
-            target = null;
-        }
-
-        if (plans.size() > 0 && info.lastActionResult.equals("success")) {
-            say("KEEP WORKING ON PLAN, " + target);
-            Action a = plans.remove(0);
-            String d = a.getParameters().toString().substring(1,2);
-            reportEntity(true, d);
-            return a;
-        }
-        //else if (plans.size() > 0 && info.lastAction.equals("move") && info.lastActionResult.equals("failed_path")) {
-        //    String direc = info.lastActionParams.toString().substring(1,2);
-        //    switch (direc) {
-        //        case "n":
-        //            map[x][y-1] = 1;
-        //            break;
-        //        case "s":
-        //            map[x][y+1] = 1;
-        //            break;
-        //        case "w":
-        //            map[x-1][y] = 1;
-        //            break;
-        //        case "e":
-        //            map[x+1][y] = 1;
-        //            break;
-        //    }
-        //}
-
-        if (target == null) {
-            int min_dist = 9999;
-            for (String d : blocks) {
-                String[] dinfo = d.split("\\.");
-                if (!hold.containsValue(dinfo[0])) {
-                    int x0 = Integer.parseInt(dinfo[2]);
-                    int y0 = Integer.parseInt(dinfo[3]);
-                    String key = String.format("%d.%d", x0, y0);
-                    if (attachedIndex.contains(key)) continue;
-                    int dist = getManhattanDistance(x,y,x0,y0);
-                    if (dist < min_dist) {
-                        min_dist = dist;
-                        target = d;
-                    }
-                }
-            }
-        }
-
-
-
-        if (target == null) {
-            int min_dist = 9999;
-            //target = null;
-            //say("WHAT LOOKS DISPENSOR");
-            say("NO TARGET!!!!");
-            say("dispenser: " + dispenser.toString());
-            for (String d : dispenser) {
-                String[] dinfo = d.split("\\.");
-                say("DINFO[0] is " + dinfo[0]);
-                say("HOLD.VALUES() is " + hold.values().toString());
-                if (!hold.containsValue(dinfo[0])) {
-                    //if (doneDispenser.contains(d)) continue;
-                    int x0 = Integer.parseInt(dinfo[2]);
-                    int y0 = Integer.parseInt(dinfo[3]);
-                    int dist = getManhattanDistance(x,y,x0,y0);
-                    if (dist < min_dist) {
-                        min_dist = dist;
-                        target = d;
-                        //say("TARGET IN FOR LOOP(DISPENSOR):" + target);
-                    }
-                }
-            }
-        }
-
-        if (target != null) {
-            say("TARGET~!: " + target);
-            String[] dinfo = target.split("\\.");
-            int tx = Integer.parseInt(dinfo[2]);
-            int ty = Integer.parseInt(dinfo[3]);
-
-            plans.clear();
-            PathFinding pf = new PathFinding(map, x, y, tx, ty);
-            say("ANSWER IS " + pf.ans);
-            int size = pf.ans.size();
-            if (size > 2) {
-                for (int i=0; i < size-2; i++) {
-                    String[] p1 = pf.ans.get(i).split("\\.");
-                    String[] p2 = pf.ans.get(i+1).split("\\.");
-                    Integer horizonal = Integer.parseInt(p2[0]) - Integer.parseInt(p1[0]);
-                    Integer vertical = Integer.parseInt(p2[1]) - Integer.parseInt(p1[1]);
-                    // TODO: should rotate if agent has attached at given direction
-                    switch (horizonal) {
-                        case 1:
-                            plans.add(new Action("move", new Identifier("e")));
-                            break;
-                        case -1:
-                            plans.add(new Action("move", new Identifier("w")));
-                            break;
-                    }
-                    switch (vertical) {
-                        case 1:
-                            plans.add(new Action("move", new Identifier("s")));
-                            break;
-                        case -1:
-                            plans.add(new Action("move", new Identifier("n")));
-                            break;
-                    }
-                    target = null;
-                }
-                Action a = plans.remove(0);
-                String d = a.getParameters().toString().substring(1,2);
-                reportEntity(true, d);
-                return a;
-            }
-
-            int subx = tx - x;
-            int suby = ty - y;
-            String dx = "w";
-            String dy = "n";
-            if (subx > 0) dx = "e";
-            if (suby > 0) dy = "s";
-
-            //say("TX: " + tx);
-            //say("TY: " + ty);
-            //say("SUBX: " + subx);
-            //say("SUBY: " + suby);
-            //say("DX: " + dx);
-            //say("DY: " + dy);
-
-            int dist = getManhattanDistance(x, y, tx, ty);
-            if (dist == 1) {
-                reportEntity(false, "r");
-                if (dinfo[1].equals("dispenser")) {
-                    if (subx == -1) return new Action("request", new Identifier("w"));
-                    if (subx ==  1) return new Action("request", new Identifier("e"));
-                    if (suby == -1) return new Action("request", new Identifier("n"));
-                    if (suby ==  1) return new Action("request", new Identifier("s"));
-                } else if (dinfo[1].equals("block")) {
-                    if (subx == -1) return new Action("attach", new Identifier("w"));
-                    if (subx ==  1) return new Action("attach", new Identifier("e"));
-                    if (suby == -1) return new Action("attach", new Identifier("n"));
-                    if (suby ==  1) return new Action("attach", new Identifier("s"));
-
-                }
-            }
-
-            //if (Math.random() > 0.5) {
-            //    return new Action("move", new Identifier(dx));
-            //} else {
-            //    return new Action("move", new Identifier(dy));
-            //}
-
-        }
-
-        //String[] hands = new String[]{"NORTH", "EAST", "SOUTH", "WEST"};
-        //return randomMove();
-
-        //say("NO TARGET~~");
-        //say("substring: " + info.lastActionParams.toString());
-        if (info.lastAction.equals("move") && info.lastActionResult.equals("success")) {
-            say("STRAIGHT!!!");
-            String direc = info.lastActionParams.toString().substring(1,2);
-            String curr = new Dot(x,y).toString();
-            switch (direc) {
-                case "n":
-                    curr = new Dot(x,y-1).toString();
-                    break;
-                case "s":
-                    curr = new Dot(x,y+1).toString();
-                    break;
-                case "w":
-                    curr = new Dot(x-1,y).toString();
-                    break;
-                case "e":
-                    curr  = new Dot(x+1,y).toString();
-                    break;
-            }
-            if (!visited.contains(curr)) {
-                reportEntity(true, direc);
-                return new Action("move", new Identifier(direc));
-            }
-        }
-        //return valuableMove();
-        return randomMove();
-    }
-
-
-    @Override
-    public void handleMessage(Percept message, String sender) {
-        messages.add(new Message(message, sender));
-    }
-
-    private void reportEntity(boolean isMove, String direc) {
-        String move_str = "None";
-        if (isMove) move_str = direc;
-        Vector<String> boxes = new Vector<String>();
-        for (String block:hold.keySet()) {
-            String btype = hold.get(block);
-            if (btype != null) {
-                boxes.add(btype);
-            }
-        }
-        String entities = String.join("|", entity);
-        String carrying = String.join(",", boxes);
-        String message = String.format("status;%d;%s;%s;%s;%d,%d;%s", step, getName(), carrying, move_str, x, y, entities);
-        Percept per = new Percept("seeAgent", new Identifier(message));
-        broadcast(per, getName());
-    }
-
-    private void reportGoal() {
-        for (Dot d : goals) {
-            int absx = x + d.x;
-            int absy = y + d.y;
-            //for (String key: prevCoor.keySet()) {
-            //
-            //}
         }
     }
 
@@ -575,14 +531,18 @@ public class GreedyAgent extends Agent{
         // }
     }
 
-
-
+    /*
+     fill 0 in 2D map
+     */
     private void setMap() {
         for (int[] row:map) {
             Arrays.fill(row, 0);
         }
     }
 
+    /*
+     update x and y coordinates based on its moving
+     */
     private void updateCoord() {
         px = x;
         py = y;
@@ -602,8 +562,12 @@ public class GreedyAgent extends Agent{
                     break;
             }
         }
+        say("x and y is " + x + "," + y);
     }
 
+    /*
+     update empty tiles from sight seeing
+     */
     private void updateEmpty() {
         for (int i=-vision; i < vision+1; i++) {
             for (int j=-vision; j < vision+1; j++) {
@@ -614,6 +578,9 @@ public class GreedyAgent extends Agent{
         }
     }
 
+    /*
+     update things informations such as dispenser and other agents
+     */
     private void updateThings() {
         for (LinkedList<Parameter> parameters : things) {
             int dx;
@@ -658,6 +625,9 @@ public class GreedyAgent extends Agent{
         }
     }
 
+    /*
+     update obstacle informations in 2D map
+     */
     private void updateObstacles() {
         for (LinkedList<Parameter> parameters : obstacles) {
             int dx = Integer.parseInt(parameters.get(0).toString());
@@ -666,6 +636,9 @@ public class GreedyAgent extends Agent{
         }
     }
 
+    /*
+     update attached blocks
+     */
     private void updateAttached() {
         for (LinkedList<Parameter> parameters : attached) {
             int dx = Integer.parseInt(parameters.get(0).toString());
@@ -858,12 +831,6 @@ public class GreedyAgent extends Agent{
         return 0;
     }
 
-
-
-
-
-
-
     /** return a random, but valid move action */
     public Action validMove(){
         Map<String, Boolean> valid = calcValidDirections(x,y);
@@ -916,10 +883,4 @@ public class GreedyAgent extends Agent{
         int newy = y + Direction.DELTA_Y[dir];
         return map[newx][newy];
     }
-
-
-
-
-
-
 }
