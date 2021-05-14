@@ -52,6 +52,9 @@ public class PercievingAgent extends Agent{
     protected ArrayList<Message> inbox = new ArrayList<Message>();
     protected ArrayList<Message> outbox = new ArrayList<Message>();
 
+    // keyed by block type
+    protected HashMap<String, Position> dispensers = new HashMap<String, Position>(); 
+
 
     protected LinkedList<String> doneDispenser = new LinkedList<String>(); // type.x.y
     protected LinkedList<Action> plans = new LinkedList<Action>();
@@ -219,7 +222,7 @@ public class PercievingAgent extends Agent{
                 things.add(percept.getParameters());
                 break;
             case "obstacle":
-                //say("obstacle is " + percept.getParameters());
+                // say("obstacle is " + percept.getParameters());
                 obstacles.add(percept.getParameters());
                 break;
             case "goal":
@@ -305,6 +308,8 @@ public class PercievingAgent extends Agent{
         agentOffsets.put(agent, shift);
     }
 
+
+    /** send information about offsets from otherAgent to targetAgent */
     public void shareCoordinateInformationWith(String otherAgent, String targetAgent, Position otherOffset){
         if(targetAgent.equals(otherAgent)) return;
 
@@ -315,9 +320,9 @@ public class PercievingAgent extends Agent{
                                                 new Numeral(offset.y));
         // sendMessage(Percept message, String receiver, String sender)
         sendMessage(p, otherAgent, getName());
-
     }
 
+    /** send information about known offsets from agents in agentOffsets to otherAgent */
     public void shareCoordinateInformationWith(String otherAgent){
         // if we have info about agents in addition to otherAgent
         Position otherOffset = agentOffsets.get(otherAgent);
@@ -326,14 +331,37 @@ public class PercievingAgent extends Agent{
         }
     }
 
+    /** send information to all known agents about our offset from otherAgent */
     public void shareCoordinateInformationAbout(String otherAgent){
         // if we have info about agents in addition to otherAgent
-        Position otherOffset = agentOffsets.get(otherAgent);
         for(String agent: agentOffsets.keySet()){
-            shareCoordinateInformationWith(agent, otherAgent, otherOffset);
+            Position offset = agentOffsets.get(agent);
+            shareCoordinateInformationWith(agent, otherAgent, offset);
         }
     }
 
+    /** process messages informing other agents about things (dispensers) */
+    public void processSharedLocationData(Message m){
+        if(m.message.getName() != "shareDispenser") return;
+
+        String type = m.message.getParameters().get(0).toString();
+        int x = (int)((Numeral)m.message.getParameters().get(1)).getValue();
+        int y = (int)((Numeral)m.message.getParameters().get(2)).getValue();
+        Position location = new Position(x,y);
+        location = translateFrom(m.sender, location);
+        dispensers.put(type, location);
+    }
+
+    /** broadcast dispenser location to all agents 
+    (they will ignore message if they have no info on this agent) */
+    public void broadcastDispenserLocation(String type, Position location){
+        Identifier typeid = new Identifier(type);
+        Numeral x = new Numeral(location.x);
+        Numeral y = new Numeral(location.y);
+
+        Percept per = new Percept("shareDispenser", typeid, x, y);
+        broadcast(per, getName());
+    }
 
     /** broadcast to agents on team that we have seen an agent */
     public void broadcastAgentSightings(){
@@ -457,8 +485,11 @@ public class PercievingAgent extends Agent{
     /** translate pos from the coordinate system of agent agentName to our coordinate system */
     public Position translateFrom(String agentName, Position pos){
         // this math may be incorrect
-        Position translator = agentOffsets.get(agentName);
-        return pos.toLocal(translator);
+        if(agentOffsets.containsKey(agentName)){
+            Position translator = agentOffsets.get(agentName);
+            return pos.toLocal(translator);
+        }
+        return null;
     }
 
 
@@ -489,6 +520,7 @@ public class PercievingAgent extends Agent{
             handlePercept(percept);
         }
 
+        
         updateThings();
         updateObstacles();
         updateAttached(); 
@@ -716,10 +748,6 @@ public class PercievingAgent extends Agent{
         return randomBiasedMove(dirs[0], dirs[1], dirs[2], dirs[3]);
     }
 
-    // public Action randomProgressMoveOrClear(){
-
-    // }
-
     /** determine which direction is most useful to move in according to how
     much unvisited area is within some number of squares */
     public Action valuableMove(){
@@ -827,6 +855,9 @@ public class PercievingAgent extends Agent{
             switch (type) {
                 case "dispenser":
                     // say("DISPENSER " + dx + "." + dy);
+                    Position location = new Position(tx,ty);
+                    dispensers.put(type, location);
+                    broadcastDispenserLocation(type, location);
                     dispenser.add(String.format("%s.dispenser.%d.%d", type, tx, ty));
                     // say("dispenser " + String.format("%s.%d.%d", type, tx, ty));
                     break;
